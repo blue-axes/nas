@@ -1,0 +1,24 @@
+Log:
+  Level: "debug"
+Http:
+  ListenAddress: "0.0.0.0"
+  ListenPort: 8088
+Database:
+  Postgres:
+    Debug: true
+    Address: "192.168.0.231"
+    Port: 5432
+    Username: "postgres"
+    Password: "123456"
+    Database: "main"
+    AutoMigrateLevel: "auto"
+    MaxConnCount: 10
+  Mongo:
+    Debug: true
+    Address: "192.168.0.231"
+    Port: 27017
+    Username: "root"
+    Password: "123456"
+    Database: "admin"
+    AutoMigrateLevel: "auto"
+    MaxConnCount: 10

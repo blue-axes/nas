@@ -1,10 +1,14 @@
 package service
 
-import "github.com/blue-axes/tmpl/store"
+import (
+	"github.com/blue-axes/tmpl/store"
+	"github.com/blue-axes/tmpl/vfs"
+)
 
 type (
 	Service struct {
 		store *store.Store
+		vfs   vfs.MountFs
 	}
 	Option func(svc *Service) error
 )

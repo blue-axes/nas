@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/errors"
+	"github.com/blue-axes/tmpl/vfs"
 	"github.com/google/uuid"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 )
@@ -40,4 +42,24 @@ func (svc *Service) getTempFile() string {
 	tempDir := svc.vfs.TempDir()
 	id := uuid.New()
 	return path.Join(tempDir, id.String())
+}
+
+func (svc *Service) FsStat(name string) (fs.FileInfo, error) {
+	return svc.vfs.Stat(name)
+}
+
+func (svc *Service) FsOpenFile(name string, flag int) (vfs.File, error) {
+	return svc.vfs.OpenFile(name, flag, 0666)
+}
+
+func (svc *Service) FsRemove(name string) error {
+	return svc.vfs.Remove(name)
+}
+
+func (svc *Service) FsMkdirAll(name string) error {
+	return svc.vfs.MkdirAll(name, 700)
+}
+
+func (svc *Service) FsReadDir(name string) ([]fs.DirEntry, error) {
+	return svc.vfs.ReadDir(name)
 }

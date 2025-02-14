@@ -31,3 +31,14 @@ type (
 		VFS
 	}
 )
+
+type (
+	VFSType string
+	VFSConf interface {
+		TypeName() VFSType
+	}
+)
+
+const (
+	VFS_OS VFSType = "os"
+)

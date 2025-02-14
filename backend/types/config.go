@@ -39,10 +39,15 @@ type (
 		Http     HttpConfig     `json:"Http" yaml:"Http"`
 		Log      LogConfig      `json:"Log" yaml:"Log"`
 		Database DatabaseConfig `json:"Database" yaml:"Database"`
+		Nas      NasConfig      `json:"Nas" yaml:"Nas"`
 	}
 
 	LogConfig struct {
 		Level string `json:"Level" yaml:"Level"`
+	}
+
+	NasConfig struct {
+		SimpleUploadRoot string `json:"SimpleUploadRoot" yaml:"SimpleUploadRoot"`
 	}
 )
 
@@ -68,6 +73,9 @@ func (cfg *HttpConfig) SetDefault() {
 }
 
 func (c *PostgresConfig) SetDefault() {
+	if c == nil {
+		return
+	}
 	if c.Address == "" {
 		c.Address = "127.0.0.1"
 	}
@@ -89,6 +97,9 @@ func (c *PostgresConfig) SetDefault() {
 }
 
 func (c *MongoConfig) SetDefault() {
+	if c == nil {
+		return
+	}
 	if c.Address == "" {
 		c.Address = "127.0.0.1"
 	}

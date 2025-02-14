@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
@@ -24,12 +25,17 @@ func ErrorHandler(err error, c echo.Context) {
 		Message: "unknown error",
 		TraceID: ctx.TraceID,
 	}
+	httpCode := http.StatusOK
 	switch verr := err.(type) {
 	case *errors.Error:
 		resp.Code = verr.Code()
 		resp.Message = verr.Message()
+	case *echo.HTTPError:
+		httpCode = verr.Code
+		resp.Code = fmt.Sprintf("%d", httpCode)
+		resp.Message = http.StatusText(httpCode)
 	default:
 		resp.Message = err.Error()
 	}
-	c.JSON(http.StatusOK, resp)
+	c.JSON(httpCode, resp)
 }

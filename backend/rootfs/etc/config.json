@@ -27,6 +27,8 @@
             "AutoMigrateLevel": "auto",
             "MaxConnCount": 10
         }
+    },
+    "Nas": {
+        "SimpleUploadRoot": "/aaa"
     }
-
 }

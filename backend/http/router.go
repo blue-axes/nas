@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/blue-axes/tmpl/http/api/example"
+	"github.com/blue-axes/tmpl/http/api/simple_upload"
 	"github.com/blue-axes/tmpl/service"
 	"github.com/labstack/echo/v4"
 )
@@ -14,5 +15,6 @@ func initRouter(svc *service.Service, e *echo.Echo) {
 
 	//分散式，便于管理
 	example.InitRouter(svc, e.Group("/example"))
+	simple_upload.InitRouter(svc, e.Group("/simple_upload"))
 
 }

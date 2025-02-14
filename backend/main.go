@@ -48,16 +48,20 @@ func main() {
 		os.Exit(1)
 		return
 	}
-	// 初始化表
-	err = databaseMigrate(sor, cfg.Database.Postgres.AutoMigrateLevel)
-	if err != nil {
-		log.Errorf("database migrate err:%s", err.Error())
-		os.Exit(1)
-		return
-	}
+	//// 初始化表
+	//err = databaseMigrate(sor, cfg.Database.Postgres.AutoMigrateLevel)
+	//if err != nil {
+	//	log.Errorf("database migrate err:%s", err.Error())
+	//	os.Exit(1)
+	//	return
+	//}
 
+	serviceOptions := []service.Option{
+		service.WithConfig(&cfg),
+		service.WithMountFs(NewMountFs()),
+	}
 	// 初始化service
-	svc, err := service.New(sor)
+	svc, err := service.New(sor, serviceOptions...)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

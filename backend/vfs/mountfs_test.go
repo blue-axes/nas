@@ -5,8 +5,8 @@ import (
 )
 
 func TestMountFs(t *testing.T) {
-	fs := NewMountFs(NewOsFS("/"))
-	_ = fs.Mount("/mnt", NewOsFS("/"))
+	fs := NewMountFs(NewOsFS(OsFsConf{RootDir: "/"}))
+	_ = fs.Mount("/mnt", NewOsFS(OsFsConf{RootDir: "/"}))
 
 	err := fs.MkdirAll("/a/b", 0666)
 	if err != nil {

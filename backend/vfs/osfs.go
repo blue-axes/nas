@@ -10,10 +10,17 @@ type (
 	osFs struct {
 		rootDir string
 	}
+	OsFsConf struct {
+		RootDir string
+	}
 )
 
-func NewOsFS(rootDir string) *osFs {
-	rootDir = path.Clean(rootDir)
+func (o OsFsConf) TypeName() VFSType {
+	return VFS_OS
+}
+
+func NewOsFS(cfg OsFsConf) *osFs {
+	rootDir := path.Clean(cfg.RootDir)
 	return &osFs{
 		rootDir: rootDir,
 	}

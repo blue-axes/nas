@@ -1,16 +1,16 @@
-package postgres
+package rdb
 
 import (
 	"fmt"
 	"github.com/blue-axes/tmpl/types"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"net/url"
 	"time"
 )
 
 type (
-	Config = types.PostgresConfig
+	Config = types.RdbConfig
 	Store  struct {
 		txStore
 	}
@@ -21,18 +21,23 @@ type (
 	TransactionFn func(store TxStore) error
 )
 
-func getDsn(cfg Config) string {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", cfg.Username, cfg.Password, cfg.Address, cfg.Port, cfg.Database)
-	dsnUrl, _ := url.Parse(dsn)
-	dsnUrl.Query().Set("sslmode", "disable")
-	dsnUrl.Query().Set("TimeZone", "Asia/Shanghai")
-	return dsnUrl.String()
-}
-
 func New(cfg Config) (*Store, error) {
 	cfg.SetDefault()
+	var (
+		db  *gorm.DB
+		err error
+	)
 
-	db, err := gorm.Open(postgres.Open(getDsn(cfg)))
+	gormCfg := &gorm.Config{}
+	switch cfg.DriverType {
+	case types.DriverTypePostgres:
+		db, err = gorm.Open(postgres.Open(cfg.DSN), gormCfg)
+	case types.DriverTypeSqlite:
+		db, err = gorm.Open(sqlite.Open(cfg.DSN), gormCfg)
+	default:
+		panic(fmt.Sprintf("not support rdb driver:%s", cfg.DriverType))
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +77,6 @@ func (s *Store) Transaction(fn TransactionFn) (err error) {
 }
 
 func (s *Store) Migrate() (err error) {
-	err = s.db.AutoMigrate(&example{})
-
+	err = s.db.AutoMigrate(&file{})
 	return err
 }

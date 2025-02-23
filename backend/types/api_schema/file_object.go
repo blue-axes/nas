@@ -2,7 +2,7 @@ package api_schema
 
 type (
 	Filename struct {
-		Name string `param:"Name"`
+		Name string `param:"*"`
 	}
 	FileInfo struct {
 		Name     string `json:"Name"`

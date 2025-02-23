@@ -6,20 +6,18 @@ type (
 		ListenPort    uint16 `json:"ListenPort" yaml:"ListenPort"`
 	}
 	DatabaseConfig struct {
-		Postgres *PostgresConfig `json:"Postgres" yaml:"Postgres"`
-		Mongo    *MongoConfig    `json:"Mongo" yaml:"Mongo"`
+		Rdb   *RdbConfig   `json:"Rdb" yaml:"Rdb"`
+		Mongo *MongoConfig `json:"Mongo" yaml:"Mongo"`
 	}
-	PostgresConfig struct {
-		Debug                 bool   `json:"Debug" yaml:"Debug"`
-		Address               string `json:"Address" yaml:"Address"`
-		Port                  uint16 `json:"Port" yaml:"Port"`
-		Username              string `json:"Username" yaml:"Username"`
-		Password              string `json:"Password" yaml:"Password"`
-		Database              string `json:"Database" yaml:"Database"`
-		MaxIdleConnCount      int    `json:"MaxIdleConnCount" yaml:"MaxIdleConnCount"`
-		MaxConnCount          int    `json:"MaxConnCount" yaml:"MaxConnCount"`
-		ConnMaxIdleTimeSecond int    `json:"ConnMaxIdleTimeSecond" yaml:"ConnMaxIdleTimeSecond"`
-		AutoMigrateLevel      string `json:"AutoMigrateLevel" yaml:"AutoMigrateLevel"`
+	RdbDriverType string
+	RdbConfig     struct {
+		DriverType            RdbDriverType `json:"DriverType" yaml:"DriverType"`
+		Debug                 bool          `json:"Debug" yaml:"Debug"`
+		DSN                   string        `json:"DSN" yaml:"DSN"`
+		MaxIdleConnCount      int           `json:"MaxIdleConnCount" yaml:"MaxIdleConnCount"`
+		MaxConnCount          int           `json:"MaxConnCount" yaml:"MaxConnCount"`
+		ConnMaxIdleTimeSecond int           `json:"ConnMaxIdleTimeSecond" yaml:"ConnMaxIdleTimeSecond"`
+		AutoMigrateLevel      string        `json:"AutoMigrateLevel" yaml:"AutoMigrateLevel"`
 	}
 
 	MongoConfig struct {
@@ -46,15 +44,28 @@ type (
 		Level string `json:"Level" yaml:"Level"`
 	}
 
-	NasConfig struct {
-		SimpleUploadRoot string `json:"SimpleUploadRoot" yaml:"SimpleUploadRoot"`
+	RealFilenamePolicy string
+	NasConfig          struct {
+		SimpleUploadRoot   string             `json:"SimpleUploadRoot" yaml:"SimpleUploadRoot"`
+		RealFilenamePolicy RealFilenamePolicy `json:"RealFilenamePolicy" yaml:"RealFilenamePolicy"`
 	}
+)
+
+const (
+	DriverTypeSqlite   RdbDriverType = "sqlite"
+	DriverTypePostgres RdbDriverType = "postgres"
+
+	RFNP_Origin    RealFilenamePolicy = "origin"
+	RFNP_Underline RealFilenamePolicy = "_"
+	RFNP_UUID      RealFilenamePolicy = "uuid"
 )
 
 func (cfg *Config) SetDefault() {
 	cfg.Http.SetDefault()
 	cfg.Log.SetDefault()
-	cfg.Database.Postgres.SetDefault()
+	cfg.Database.Rdb.SetDefault()
+	cfg.Database.Mongo.SetDefault()
+	cfg.Nas.SetDefault()
 }
 
 func (cfg *LogConfig) SetDefault() {
@@ -72,19 +83,17 @@ func (cfg *HttpConfig) SetDefault() {
 	}
 }
 
-func (c *PostgresConfig) SetDefault() {
+func (c *RdbConfig) SetDefault() {
 	if c == nil {
 		return
 	}
-	if c.Address == "" {
-		c.Address = "127.0.0.1"
+	if c.DriverType == "" {
+		c.DriverType = DriverTypeSqlite
 	}
-	if c.Port <= 0 {
-		c.Port = 5432
+	if c.DSN == "" {
+		c.DSN = "file://localhost/rdb.db?mode=rwc"
 	}
-	if c.Username == "" {
-		c.Username = "postgres"
-	}
+
 	if c.MaxConnCount <= 0 {
 		c.MaxConnCount = 5
 	}
@@ -117,5 +126,11 @@ func (c *MongoConfig) SetDefault() {
 	}
 	if c.ConnMaxIdleTimeSecond <= 0 {
 		c.ConnMaxIdleTimeSecond = 60 * 5
+	}
+}
+
+func (c *NasConfig) SetDefault() {
+	if c.RealFilenamePolicy == "" {
+		c.RealFilenamePolicy = RFNP_UUID
 	}
 }

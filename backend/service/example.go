@@ -6,7 +6,7 @@ import (
 )
 
 func (svc *Service) ListExample(ctx *context.Context) (res []types.Example, err error) {
-	dbRes, err := svc.store.Postgres().ListExamples(ctx)
+	dbRes, err := svc.store.RDB().ListExamples(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +17,7 @@ func (svc *Service) ListExample(ctx *context.Context) (res []types.Example, err 
 }
 
 func (svc *Service) CreateExample(ctx *context.Context, e *types.Example) error {
-	return svc.store.Postgres().CreateExamples(ctx, e)
+	return svc.store.RDB().CreateExamples(ctx, e)
 }
 
 func (svc *Service) MgListExample(ctx *context.Context) (res []types.Example, err error) {

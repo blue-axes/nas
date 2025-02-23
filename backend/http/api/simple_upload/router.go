@@ -7,18 +7,18 @@ import (
 
 func InitRouter(svc *service.Service, e *echo.Group) {
 	handler := New(svc)
-	routePrefix := "/object/:name"
-	// 获取对象元数据
-	e.GET(routePrefix+"/info", handler.Schema)
-	e.HEAD(routePrefix, handler.Schema)
-	// 读取目录信息
-	e.GET(routePrefix+"/read_dir", handler.ReadDir)
-	// 获取一个对象
-	e.GET(routePrefix, handler.Download)
-	// 上传新文件
-	e.POST(routePrefix, handler.Upload)
-	// 上传多文件
-	e.POST("/objects", handler.MultiUpload)
-	// 删除文件
-	e.DELETE(routePrefix, handler.Delete)
+
+	// 获取元数据
+	e.HEAD("/object/*", handler.Schema)
+	// 文件下载
+	e.GET("/object/*", handler.Download)
+	// 文件上传
+	e.POST("/object/*", handler.Upload)
+	// 文件删除
+	e.DELETE("/object/*", handler.Delete)
+
+	// 文件列表
+	e.GET("/objects/*", handler.ReadDir)
+	// 文件批量上传
+	e.POST("/objects/", handler.MultiUpload)
 }

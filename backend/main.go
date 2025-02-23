@@ -48,13 +48,13 @@ func main() {
 		os.Exit(1)
 		return
 	}
-	//// 初始化表
-	//err = databaseMigrate(sor, cfg.Database.Postgres.AutoMigrateLevel)
-	//if err != nil {
-	//	log.Errorf("database migrate err:%s", err.Error())
-	//	os.Exit(1)
-	//	return
-	//}
+	// 初始化表
+	err = databaseMigrate(sor, cfg.Database.Rdb.AutoMigrateLevel)
+	if err != nil {
+		log.Errorf("database migrate err:%s", err.Error())
+		os.Exit(1)
+		return
+	}
 
 	serviceOptions := []service.Option{
 		service.WithConfig(&cfg),
@@ -95,9 +95,9 @@ func main() {
 func databaseMigrate(sor *store.Store, level string) error {
 	switch strings.ToLower(level) {
 	case "auto":
-		_ = sor.Postgres().Migrate()
+		_ = sor.RDB().Migrate()
 	case "must":
-		err := sor.Postgres().Migrate()
+		err := sor.RDB().Migrate()
 		if err != nil {
 			return err
 		}

@@ -7,8 +7,10 @@ import (
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
 	"github.com/blue-axes/tmpl/service"
+	"github.com/blue-axes/tmpl/types"
 	"github.com/blue-axes/tmpl/types/api_schema"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -64,6 +66,7 @@ func (h FileObjectHandler) Download(c echo.Context) error {
 	var (
 		req struct {
 			api_schema.Filename
+			Download bool `query:"Download"`
 		}
 		err error
 	)
@@ -79,13 +82,21 @@ func (h FileObjectHandler) Download(c echo.Context) error {
 		return h.ToHttpError(err)
 	}
 	defer rc.Close()
-	// 设置header  attachment
+	if req.Download {
+		// 设置header  attachment
+		header := c.Response().Header()
+		header.Set(echo.HeaderContentLength, fmt.Sprintf("%d", info.Size))
+		header.Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", path.Base(path.Clean(info.Name))))
+		header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
+		http.ServeContent(c.Response(), c.Request(), path.Base(req.Name), time.Now(), rc)
+		return nil
+	}
+	// 显示文件
 	header := c.Response().Header()
 	header.Set(echo.HeaderContentLength, fmt.Sprintf("%d", info.Size))
-	header.Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%s", path.Base(path.Clean(info.Name))))
-	header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-	http.ServeContent(c.Response(), c.Request(), path.Base(req.Name), time.Now(), rc)
-	return nil
+	header.Set(echo.HeaderContentType, types.Ext2MimeType(info.Ext))
+	_, err = io.Copy(c.Response(), rc)
+	return err
 }
 
 func (h FileObjectHandler) Upload(c echo.Context) error {
@@ -93,6 +104,7 @@ func (h FileObjectHandler) Upload(c echo.Context) error {
 	var (
 		req struct {
 			api_schema.Filename
+			Overwrite bool `form:"Overwrite"`
 		}
 	)
 	upFile, err := c.FormFile("File")
@@ -110,7 +122,7 @@ func (h FileObjectHandler) Upload(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	err = h.svc.SimpleSaveFile(ctx, req.Name, upf, false)
+	err = h.svc.SimpleSaveFile(ctx, req.Name, upf, req.Overwrite)
 	_ = upf.Close()
 	return h.RespJson(c, nil, err)
 }
@@ -195,7 +207,7 @@ func (h FileObjectHandler) MultiUpload(c echo.Context) error {
 	var (
 		value   = url.Values(form.Value)
 		dirPath = value.Get("Dir")
-		force   = strings.ToLower(value.Get("Force")) == "true"
+		force   = strings.ToLower(value.Get("Overwrite")) == "true"
 	)
 	dirPath, err = h.validFilename(dirPath)
 	if err != nil {
@@ -230,19 +242,20 @@ func (h FileObjectHandler) validFilename(name string) (string, error) {
 	xxx/../../zzz  不支持
 	xxx/././ff 不支持
 	xx/./../zz 不支持
-	ss./cc. => 不变还是不支持？   支持
-	xx../ww.. => 不变还是不支持？ 支持
+	ss./cc. => 不变还是不支持？   本来想支持最终不支持 ，测试发现windows上 a. 和 a同名
+	xx../ww.. => 不变还是不支持？ 本来想支持最终不支持 ，测试发现windows上 a.. 和 a同名
 
 	总结: 不支持路径中带有 ./ 和 ../这中遍历目录的操作
 	*/
+	name = strings.TrimSpace(name)
 	name = h.correctName(name)
-	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+	//if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+	//	return "", errors.WithCode(constants.ErrCodeInvalidArgs, "filename is invalid")
+	//}
+	if strings.HasSuffix(name, ".") || strings.HasSuffix(name, "..") {
 		return "", errors.WithCode(constants.ErrCodeInvalidArgs, "filename is invalid")
 	}
-	if strings.HasSuffix(name, "/.") || strings.HasSuffix(name, "/..") {
-		return "", errors.WithCode(constants.ErrCodeInvalidArgs, "filename is invalid")
-	}
-	if strings.Contains(name, "/./") || strings.HasSuffix(name, "/../") {
+	if strings.Contains(name, "./") || strings.Contains(name, "../") {
 		return "", errors.WithCode(constants.ErrCodeInvalidArgs, "filename is invalid")
 	}
 
@@ -254,6 +267,7 @@ func (h FileObjectHandler) correctName(name string) string {
 	//  路径中的 \ 替换成 /
 	//  /开头的文件名修改为相对路径
 	//  以 / 结尾的文件名改去掉结尾的/
+	name = strings.TrimSpace(name)
 	name = strings.ReplaceAll(name, "\\", "/")
 	name = strings.Trim(name, "/")
 	return name

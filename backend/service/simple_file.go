@@ -3,7 +3,9 @@ package service
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
+	"github.com/blue-axes/tmpl/pkg/errors"
 	"github.com/blue-axes/tmpl/store/rdb"
 	"github.com/blue-axes/tmpl/types"
 	"github.com/google/uuid"
@@ -49,6 +51,10 @@ func (svc *Service) SimpleSaveFile(ctx *context.Context, name string, r io.Reade
 		if err != nil {
 			return err
 		}
+		return nil
+	}
+	if err == nil && !overwrite {
+		return errors.WithCode(constants.ErrCodeFileExists, "file has already exists")
 	}
 
 	f, err := svc.vfs.OpenFile(realName, os.O_CREATE|os.O_RDWR, 0600)

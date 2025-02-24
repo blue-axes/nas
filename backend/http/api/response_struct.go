@@ -33,7 +33,12 @@ func ErrorHandler(err error, c echo.Context) {
 	case *echo.HTTPError:
 		httpCode = verr.Code
 		resp.Code = fmt.Sprintf("%d", httpCode)
-		resp.Message = http.StatusText(httpCode)
+		msg := fmt.Sprintf("%v", verr.Message)
+		if msg != "" && msg != "<nil>" {
+			resp.Message = msg
+		} else {
+			resp.Message = http.StatusText(httpCode)
+		}
 	default:
 		resp.Message = err.Error()
 	}

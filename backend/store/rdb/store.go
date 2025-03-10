@@ -68,7 +68,7 @@ func (s *Store) Transaction(fn TransactionFn) (err error) {
 		db: tx,
 	}
 	err = fn(txStore)
-	if err != nil {
+	if err == nil {
 		tx.Commit()
 		return
 	}

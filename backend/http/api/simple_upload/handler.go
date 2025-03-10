@@ -104,13 +104,27 @@ func (h FileObjectHandler) Upload(c echo.Context) error {
 	var (
 		req struct {
 			api_schema.Filename
-			Overwrite bool `form:"Overwrite"`
+			Overwrite bool `form:"Overwrite" query:"Overwrite"`
 		}
+		upf io.ReadCloser
+		err error
 	)
-	upFile, err := c.FormFile("File")
-	if err != nil {
-		return err
+
+	// 检查文件头是否为二进制上传
+	if c.Request().Header.Get(echo.HeaderContentType) == echo.MIMEOctetStream {
+		req.Overwrite = true
+		upf = c.Request().Body
+	} else {
+		upFile, err := c.FormFile("File")
+		if err != nil {
+			return err
+		}
+		upf, err = upFile.Open()
+		if err != nil {
+			return err
+		}
 	}
+
 	if err := c.Bind(&req); err != nil {
 		return err
 	}
@@ -118,10 +132,7 @@ func (h FileObjectHandler) Upload(c echo.Context) error {
 	if err != nil {
 		return h.ToHttpError(err)
 	}
-	upf, err := upFile.Open()
-	if err != nil {
-		return err
-	}
+
 	err = h.svc.SimpleSaveFile(ctx, req.Name, upf, req.Overwrite)
 	_ = upf.Close()
 	return h.RespJson(c, nil, err)

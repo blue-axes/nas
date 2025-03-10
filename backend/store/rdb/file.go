@@ -8,16 +8,19 @@ import (
 	"github.com/blue-axes/tmpl/types"
 	"gorm.io/gorm"
 	"path"
+	"time"
 )
 
 type (
 	file struct {
-		gorm.Model
-		Name   string `gorm:"column:name; size:512; unique; not null; comment:the name"`
-		Ext    string `gorm:"column:ext; size:50; comment: the file type ext"`
-		Path   string `gorm:"column:path; size:1024; comment: real path"`
-		Size   uint64 `gorm:"column:size; default: 0; comment: file size"`
-		Md5Sum string `gorm:"column:md5_sum"`
+		ID        uint `gorm:"primarykey"`
+		CreatedAt time.Time
+		UpdatedAt time.Time
+		Name      string `gorm:"column:name; size:512; unique; not null; comment:the name"`
+		Ext       string `gorm:"column:ext; size:50; comment: the file type ext"`
+		Path      string `gorm:"column:path; size:1024; comment: real path"`
+		Size      uint64 `gorm:"column:size; default: 0; comment: file size"`
+		Md5Sum    string `gorm:"column:md5_sum"`
 	}
 )
 

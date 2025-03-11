@@ -98,6 +98,7 @@ function ImageManage() {
             border: "1px solid #ccc",
           }}
           onClick={() => changeDir(item.Name)}
+          onDoubleClick={(e)=>{e.preventDefault()}}
         >
           <FolderOutlined
             style={{

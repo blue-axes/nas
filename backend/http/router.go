@@ -15,6 +15,7 @@ func initRouter(svc *service.Service, e *echo.Echo) {
 
 	//分散式，便于管理
 	example.InitRouter(svc, e.Group("/example"))
+	e.Static("/static", svc.Config().Http.StaticRoot)
 	simple_upload.InitRouter(svc, e.Group("/simple_upload"))
 
 }

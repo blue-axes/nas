@@ -4,7 +4,8 @@
     },
     "Http": {
         "ListenAddress": "0.0.0.0",
-        "ListenPort": 8088
+        "ListenPort": 8088,
+        "StaticRoot": "./static"
     },
     "Database": {
         "RDS": {

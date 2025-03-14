@@ -4,6 +4,7 @@ type (
 	HttpConfig struct {
 		ListenAddress string `json:"ListenAddress" yaml:"ListenAddress"`
 		ListenPort    uint16 `json:"ListenPort" yaml:"ListenPort"`
+		StaticRoot    string `json:"StaticRoot" yaml:"StaticRoot"`
 	}
 	DatabaseConfig struct {
 		Rdb   *RdbConfig   `json:"Rdb" yaml:"Rdb"`
@@ -80,6 +81,9 @@ func (cfg *HttpConfig) SetDefault() {
 	}
 	if cfg.ListenPort <= 0 {
 		cfg.ListenPort = 80
+	}
+	if cfg.StaticRoot == "" {
+		cfg.StaticRoot = "./"
 	}
 }
 

@@ -1,23 +1,23 @@
 import App from './App.jsx'
 import ImageManage from './pages/ImageManage.jsx'
 import Sub from './Sub.jsx'
-import { createBrowserRouter } from 'react-router'
+import { createHashRouter } from 'react-router'
 
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
-    path: "/",
+    path: '/',
     element: <App />,
     children: [
       {
-        path: "/image",
+        path: '/image',
         element: <ImageManage />
       },
       {
-        path: "/video",
+        path: '/video',
         element: <Sub />
       },
       {
-        path: "/file",
+        path: '/file',
         element: <Sub />
       }
     ]

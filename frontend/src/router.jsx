@@ -1,6 +1,7 @@
 import App from './App.jsx'
 import ImageManage from './pages/ImageManage.jsx'
-import Sub from './Sub.jsx'
+import VideoManage from './pages/VideoManage.jsx'
+import FileManage from './pages/FileManage.jsx'
 import { createHashRouter } from 'react-router'
 
 const router = createHashRouter([
@@ -14,11 +15,11 @@ const router = createHashRouter([
       },
       {
         path: '/video',
-        element: <Sub />
+        element: <VideoManage />
       },
       {
         path: '/file',
-        element: <Sub />
+        element: <FileManage />
       }
     ]
   }

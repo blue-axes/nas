@@ -1,13 +1,12 @@
 import {
   Layout,
-  Image,
   Button,
   Upload,
   Drawer,
   message,
-  Spin,
-  Tooltip,
   Empty,
+  Table,
+  Tooltip,
 } from "antd";
 import {
   UploadOutlined,
@@ -15,20 +14,19 @@ import {
   HomeOutlined,
   InboxOutlined,
   DeleteOutlined,
+  FileOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { useImmerReducer } from "use-immer";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import path from "path-browserify";
 
 import { ImageList, FileList } from "./../reducers/ImageManageReducer";
 import { ReadDir, UploadFile, DeleteFile } from "../apis/SimpleUpload";
 import PathTravel from "../components/PathTravel";
 
-const Header = Layout.Header;
-const Content = Layout.Content;
 const pathPrefix = "/simple_upload/object";
 const { Dragger } = Upload;
-const PAGE_SIZE = 20;
 
 const styles = {
   page: {
@@ -51,84 +49,7 @@ const styles = {
     overflow: "auto",
     padding: "20px 24px",
   },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "16px",
-  },
-  card: {
-    position: "relative",
-    borderRadius: "10px",
-    overflow: "hidden",
-    background: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    cursor: "pointer",
-  },
-  cardHover: {
-    transform: "translateY(-3px)",
-    boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-  },
-  folderIcon: {
-    fontSize: "72px",
-    color: "#faad14",
-    display: "block",
-    lineHeight: "180px",
-    textAlign: "center",
-  },
-  folderName: {
-    padding: "10px 12px",
-    fontSize: "14px",
-    fontWeight: 500,
-    textAlign: "center",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    borderTop: "1px solid #f5f5f5",
-    color: "#333",
-  },
-  imageWrap: {
-    position: "relative",
-    aspectRatio: "1 / 1",
-    overflow: "hidden",
-    background: "#fafafa",
-  },
-  imageOverlay: {
-    position: "absolute",
-    inset: 0,
-    background: "linear-gradient(transparent 60%, rgba(0,0,0,0.45))",
-    opacity: 0,
-    transition: "opacity 0.2s ease",
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    padding: "10px",
-    pointerEvents: "none",
-  },
-  imageOverlayVisible: {
-    opacity: 1,
-  },
-  imageName: {
-    color: "#fff",
-    fontSize: "13px",
-    fontWeight: 500,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-    maxWidth: "75%",
-  },
-  deleteBtn: {
-    pointerEvents: "auto",
-  },
-  sentinel: {
-    width: "100%",
-    padding: "24px",
-    textAlign: "center",
-    gridColumn: "1 / -1",
-  },
   emptyWrap: {
-    gridColumn: "1 / -1",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -136,119 +57,10 @@ const styles = {
   },
 };
 
-function LazyImage({ src, name }) {
-  const containerRef = useRef(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.unobserve(el);
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={containerRef} style={styles.imageWrap}>
-      {inView ? (
-        <Image
-          src={src}
-          alt={name}
-          width="100%"
-          height="100%"
-          style={{ objectFit: "cover" }}
-          preview={{ mask: "Preview" }}
-        />
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100%",
-          }}
-        >
-          <Spin size="small" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ImageCard({ item, currentDir, onDelete }) {
-  const [hover, setHover] = useState(false);
-  const src = path.join(pathPrefix, currentDir, item.Name);
-
-  return (
-    <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <LazyImage src={src} name={item.Name} />
-      <div
-        style={{
-          ...styles.imageOverlay,
-          ...(hover ? styles.imageOverlayVisible : {}),
-        }}
-      >
-        <span style={styles.imageName} title={item.Name}>
-          {item.Name}
-        </span>
-        <Tooltip title="Delete">
-          <Button
-            style={styles.deleteBtn}
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined style={{ color: "#fff" }} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(path.join(currentDir, item.Name));
-            }}
-          />
-        </Tooltip>
-      </div>
-    </div>
-  );
-}
-
-function FolderCard({ item, onEnter }) {
-  const [hover, setHover] = useState(false);
-
-  return (
-    <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
-      onClick={() => onEnter(item.Name)}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <FolderOutlined style={styles.folderIcon} />
-      <div style={styles.folderName} title={item.Name}>
-        {item.Name}
-      </div>
-    </div>
-  );
-}
-
-function ImageManage() {
+function FileManage() {
   const [messageApi, contextHolder] = message.useMessage();
 
-  const [currentDir, setCurrentDir] = useState("/img/");
+  const [currentDir, setCurrentDir] = useState("/other/");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
   const [pathItems, setPathItems] = useState([
     {
@@ -256,38 +68,16 @@ function ImageManage() {
       path: "/",
     },
     {
-      title: "img",
-      path: "/img/",
+      title: "other",
+      path: "/other/",
     },
   ]);
-  const [showCount, setShowCount] = useState(PAGE_SIZE);
 
   const [imageList, dispatch] = useImmerReducer(ImageList, []);
   const [fileList, dispatchFileList] = useImmerReducer(FileList, []);
-  const sentinelRef = useRef(null);
-
-  const loadMore = useCallback(() => {
-    setShowCount((prev) => prev + PAGE_SIZE);
-  }, []);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          loadMore();
-        }
-      },
-      { rootMargin: "300px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore, imageList.length]);
 
   useEffect(() => {
     ReadDir(currentDir).then((data) => {
-      setShowCount(PAGE_SIZE);
       dispatch({
         type: "list",
         payload: data.List ? data.List : [],
@@ -305,7 +95,6 @@ function ImageManage() {
         path: nextDir,
       },
     ]);
-    setShowCount(PAGE_SIZE);
     ReadDir(nextDir).then((data) => {
       dispatch({
         type: "list",
@@ -330,7 +119,6 @@ function ImageManage() {
       }
     }
     setPathItems(newPathItems);
-    setShowCount(PAGE_SIZE);
 
     ReadDir(absolutePath).then((data) => {
       dispatch({
@@ -363,6 +151,7 @@ function ImageManage() {
         type: "error",
         content: "Please select files",
       });
+      return;
     }
 
     fileList.map((file) => {
@@ -441,21 +230,103 @@ function ImageManage() {
     });
   };
 
-  const allItems = imageList.map((item) => {
-    if (item.FileType == "dir") {
-      return <FolderCard key={item.Name} item={item} onEnter={changeDir} />;
-    }
-    return (
-      <ImageCard
-        key={item.Name}
-        item={item}
-        currentDir={currentDir}
-        onDelete={deleteFile}
-      />
-    );
-  });
+  const formatSize = (bytes) => {
+    if (!bytes) return "-";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024)
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+  };
 
-  const items = allItems.slice(0, showCount);
+  const getExt = (name) => {
+    const idx = name.lastIndexOf(".");
+    if (idx < 0) return "";
+    return name.slice(idx + 1).toUpperCase();
+  };
+
+  const columns = [
+    {
+      title: "",
+      width: 40,
+      render: (_, record) => {
+        if (record.FileType === "dir") {
+          return <FolderOutlined style={{ color: "#faad14", fontSize: "18px" }} />;
+        }
+        return <FileOutlined style={{ color: "#1677ff", fontSize: "18px" }} />;
+      },
+    },
+    {
+      title: "Name",
+      dataIndex: "Name",
+      key: "Name",
+      render: (text, record) => {
+        if (record.FileType === "dir") {
+          return (
+            <a onClick={() => changeDir(record.Name)} style={{ fontWeight: 500 }}>
+              {text}
+            </a>
+          );
+        }
+        return (
+          <a
+            href={path.join(pathPrefix, currentDir, record.Name)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {text}
+          </a>
+        );
+      },
+    },
+    {
+      title: "Type",
+      width: 100,
+      render: (_, record) => {
+        if (record.FileType === "dir") return "Folder";
+        return getExt(record.Name) || "File";
+      },
+    },
+    {
+      title: "Size",
+      width: 120,
+      render: (_, record) => {
+        if (record.FileType === "dir") return "-";
+        return formatSize(record.Size);
+      },
+    },
+    {
+      title: "",
+      width: 80,
+      render: (_, record) => {
+        if (record.FileType === "dir") return null;
+        return (
+          <div style={{ display: "flex", gap: "4px" }}>
+            <Tooltip title="Download">
+              <Button
+                type="text"
+                size="small"
+                icon={<DownloadOutlined />}
+                href={path.join(pathPrefix, currentDir, record.Name)}
+                target="_blank"
+              />
+            </Tooltip>
+            <Tooltip title="Delete">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() =>
+                  deleteFile(path.join(currentDir, record.Name))
+                }
+              />
+            </Tooltip>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <>
@@ -510,19 +381,27 @@ function ImageManage() {
             </div>
           </Drawer>
 
-          {items.length === 0 ? (
+          {imageList.length === 0 ? (
             <div style={styles.emptyWrap}>
               <Empty description="Empty directory" />
             </div>
           ) : (
-            <div style={styles.grid}>
-              {items}
-              {showCount < allItems.length && (
-                <div ref={sentinelRef} style={styles.sentinel}>
-                  <Spin />
-                </div>
-              )}
-            </div>
+            <Table
+              dataSource={imageList}
+              columns={columns}
+              rowKey="Name"
+              pagination={false}
+              size="middle"
+              onRow={(record) => {
+                if (record.FileType === "dir") {
+                  return {
+                    onDoubleClick: () => changeDir(record.Name),
+                    style: { cursor: "pointer" },
+                  };
+                }
+                return {};
+              }}
+            />
           )}
         </div>
       </div>
@@ -530,4 +409,4 @@ function ImageManage() {
   );
 }
 
-export default ImageManage;
+export default FileManage;

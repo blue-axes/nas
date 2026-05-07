@@ -1,0 +1,392 @@
+openapi: 3.0.3
+info:
+  title: NAS API
+  description: Network Attached Storage API for file management
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8088
+    description: Local development server
+
+paths:
+  /simple_upload/object/{filename}:
+    head:
+      summary: Get file metadata
+      operationId: getFileMetadata
+      tags:
+        - Files
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file
+      responses:
+        '200':
+          description: File metadata in headers
+          headers:
+            Content-Length:
+              schema:
+                type: integer
+              description: File size in bytes
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment filename
+            Content-Type:
+              schema:
+                type: string
+              description: MIME type
+
+    get:
+      summary: Download file
+      operationId: downloadFile
+      tags:
+        - Files
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file
+        - name: Download
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Force download as attachment
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+    post:
+      summary: Upload file
+      operationId: uploadFile
+      tags:
+        - Files
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Target path and name for the file
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                File:
+                  type: string
+                  format: binary
+                  description: File to upload
+                Overwrite:
+                  type: boolean
+                  description: Overwrite existing file
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Raw file content
+      responses:
+        '200':
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: File exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete file
+      operationId: deleteFile
+      tags:
+        - Files
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file
+      responses:
+        '200':
+          description: Delete successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /simple_upload/objects/{path}:
+    get:
+      summary: List directory contents
+      operationId: listDirectory
+      tags:
+        - Files
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+            default: ""
+          description: Directory path to list
+      responses:
+        '200':
+          description: Directory listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryResponse'
+
+  /simple_upload/objects/:
+    post:
+      summary: Multi-file upload
+      operationId: multiUpload
+      tags:
+        - Files
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                Dir:
+                  type: string
+                  description: Target directory path
+                Overwrite:
+                  type: string
+                  description: "Set to 'true' to overwrite"
+                File:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Files to upload
+      responses:
+        '200':
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /example/list:
+    post:
+      summary: List examples (SQL)
+      operationId: listExamplesSQL
+      tags:
+        - Examples
+      responses:
+        '200':
+          description: List of examples
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleListResponse'
+
+  /example/create:
+    post:
+      summary: Create example (SQL)
+      operationId: createExampleSQL
+      tags:
+        - Examples
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Name
+              properties:
+                Name:
+                  type: string
+                  description: Example name
+      responses:
+        '200':
+          description: Created example ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleCreateResponse'
+
+  /example/mongo_list:
+    post:
+      summary: List examples (MongoDB)
+      operationId: listExamplesMongo
+      tags:
+        - Examples
+      responses:
+        '200':
+          description: List of examples
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleListResponse'
+
+  /example/mongo_create:
+    post:
+      summary: Create example (MongoDB)
+      operationId: createExampleMongo
+      tags:
+        - Examples
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Name
+              properties:
+                Name:
+                  type: string
+                  description: Example name
+      responses:
+        '200':
+          description: Created example ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleCreateResponse'
+
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        TraceID:
+          type: string
+          description: Request trace ID
+        Code:
+          type: string
+          example: "success"
+        Message:
+          type: string
+          example: ""
+        Data:
+          type: object
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        TraceID:
+          type: string
+        Code:
+          type: string
+          enum:
+            - unknown
+            - invalid_arguments
+            - not_found
+            - file_exists
+            - file_checksum_invalid
+        Message:
+          type: string
+        Data:
+          type: object
+          nullable: true
+
+    DirectoryResponse:
+      type: object
+      properties:
+        TraceID:
+          type: string
+        Code:
+          type: string
+        Message:
+          type: string
+        Data:
+          type: object
+          properties:
+            List:
+              type: array
+              items:
+                $ref: '#/components/schemas/FileInfo'
+
+    FileInfo:
+      type: object
+      properties:
+        Name:
+          type: string
+        Size:
+          type: integer
+          format: int64
+        FileType:
+          type: string
+          enum:
+            - file
+            - dir
+
+    Example:
+      type: object
+      properties:
+        ID:
+          type: string
+        Name:
+          type: string
+
+    ExampleListResponse:
+      type: object
+      properties:
+        TraceID:
+          type: string
+        Code:
+          type: string
+        Message:
+          type: string
+        Data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Example'
+
+    ExampleCreateResponse:
+      type: object
+      properties:
+        TraceID:
+          type: string
+        Code:
+          type: string
+        Message:
+          type: string
+        Data:
+          type: object
+          properties:
+            ID:
+              type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security: []

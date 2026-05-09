@@ -6,9 +6,19 @@ function defaultClick({ absolutePath }) {
 
 const itemStyle = {
   display: "inline-block",
-  margin: "5px",
-  fontSize: "1.5em",
+  margin: "0 2px",
+  fontSize: "1.15em",
   cursor: "pointer",
+  color: "#94a3b8",
+  padding: "2px 6px",
+  borderRadius: "4px",
+  transition: "color 0.2s ease, background 0.2s ease",
+};
+
+const separatorStyle = {
+  color: "#475569",
+  margin: "0 2px",
+  fontSize: "1em",
 };
 
 function PathTravel({ items = [], splitor = "/", onClick = defaultClick }) {
@@ -22,6 +32,7 @@ function PathTravel({ items = [], splitor = "/", onClick = defaultClick }) {
         <span key={tmp}>
           <span
             style={itemStyle}
+            className="tech-breadcrumb-item"
             onClick={() => {
               onClick({ absolutePath: tmp, path: item.path });
             }}
@@ -29,10 +40,13 @@ function PathTravel({ items = [], splitor = "/", onClick = defaultClick }) {
             {item?.icon}
             {item?.title || item.path}
           </span>
-          <span>{splitor}</span>
-        </span>
+          <span style={separatorStyle}>{splitor}</span>
+        </span>,
       );
     });
+    if (result.length > 0) {
+      result.pop();
+    }
     return result;
   };
 

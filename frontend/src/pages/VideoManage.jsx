@@ -30,6 +30,7 @@ import path from "path-browserify";
 import { ImageList, FileList } from "./../reducers/ImageManageReducer";
 import { ReadDir, UploadFile, DeleteFile } from "../apis/SimpleUpload";
 import PathTravel from "../components/PathTravel";
+import useScreenWidth from "../hooks/useScreenWidth";
 
 const Content = Layout.Content;
 const pathPrefix = "/simple_upload/object";
@@ -40,67 +41,11 @@ const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const SKIP_SECONDS = 10;
 
 const styles = {
-  page: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    background: "#f5f5f5",
-  },
-  header: {
-    background: "#fff",
-    padding: "12px 24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottom: "1px solid #f0f0f0",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-  },
-  content: {
-    flex: 1,
-    overflow: "auto",
-    padding: "20px 24px",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "16px",
-  },
-  card: {
-    position: "relative",
-    borderRadius: "10px",
-    overflow: "hidden",
-    background: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    cursor: "pointer",
-  },
-  cardHover: {
-    transform: "translateY(-3px)",
-    boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-  },
-  folderIcon: {
-    fontSize: "72px",
-    color: "#faad14",
-    display: "block",
-    lineHeight: "180px",
-    textAlign: "center",
-  },
-  folderName: {
-    padding: "10px 12px",
-    fontSize: "14px",
-    fontWeight: 500,
-    textAlign: "center",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    borderTop: "1px solid #f5f5f5",
-    color: "#333",
-  },
   videoThumb: {
     position: "relative",
     aspectRatio: "16 / 9",
     overflow: "hidden",
-    background: "#000",
+    background: "rgba(10, 14, 39, 0.95)",
   },
   videoThumbEl: {
     width: "100%",
@@ -113,42 +58,29 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "rgba(0,0,0,0.3)",
-    transition: "background 0.2s ease",
+    background: "rgba(0,0,0,0.35)",
+    transition: "background 0.25s ease",
   },
   playIcon: {
-    fontSize: "48px",
-    color: "rgba(255,255,255,0.9)",
-    filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
+    fontSize: "52px",
+    color: "rgba(255,255,255,0.92)",
+    filter: "drop-shadow(0 0 12px rgba(0,212,255,0.4))",
   },
   videoInfo: {
-    padding: "10px 12px",
+    padding: "10px 14px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
   videoName: {
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: 500,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    color: "#333",
+    color: "#e2e8f0",
     flex: 1,
     marginRight: "8px",
-  },
-  sentinel: {
-    width: "100%",
-    padding: "24px",
-    textAlign: "center",
-    gridColumn: "1 / -1",
-  },
-  emptyWrap: {
-    gridColumn: "1 / -1",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "300px",
   },
   playerContainer: {
     width: "100%",
@@ -167,7 +99,7 @@ const styles = {
     bottom: 0,
     left: 0,
     right: 0,
-    background: "linear-gradient(transparent, rgba(0,0,0,0.8))",
+    background: "linear-gradient(transparent, rgba(0,0,0,0.85))",
     padding: "20px 16px 12px",
     display: "flex",
     flexDirection: "column",
@@ -189,6 +121,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "color 0.2s ease",
   },
   timeText: {
     color: "rgba(255,255,255,0.85)",
@@ -199,17 +132,18 @@ const styles = {
   },
   speedBtn: {
     color: "#fff",
-    border: "1px solid rgba(255,255,255,0.3)",
+    border: "1px solid rgba(255,255,255,0.25)",
     borderRadius: "4px",
     background: "transparent",
     cursor: "pointer",
     fontSize: "12px",
     padding: "2px 8px",
     fontWeight: 500,
+    transition: "background 0.2s ease, border-color 0.2s ease",
   },
   speedBtnActive: {
-    background: "rgba(255,255,255,0.2)",
-    borderColor: "rgba(255,255,255,0.6)",
+    background: "rgba(0, 212, 255, 0.25)",
+    borderColor: "rgba(0, 212, 255, 0.6)",
   },
   progressWrap: {
     flex: 1,
@@ -230,6 +164,8 @@ function formatTime(seconds) {
 }
 
 function VideoPlayer({ src, open, onClose }) {
+  const sw = useScreenWidth();
+  const modalWidth = sw < 768 ? "95%" : "80%";
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -284,7 +220,10 @@ function VideoPlayer({ src, open, onClose }) {
   const skip = (seconds) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+    video.currentTime = Math.max(
+      0,
+      Math.min(video.duration, video.currentTime + seconds),
+    );
   };
 
   const changeSpeed = (s) => {
@@ -362,7 +301,7 @@ function VideoPlayer({ src, open, onClose }) {
       open={open}
       onCancel={onClose}
       footer={null}
-      width="80%"
+      width={modalWidth}
       styles={{ body: { padding: 0, background: "#000" } }}
       destroyOnClose
     >
@@ -398,23 +337,30 @@ function VideoPlayer({ src, open, onClose }) {
               value={currentTime}
               onChange={onProgressChange}
               tooltip={{ formatter: formatTime }}
-              styles={{
-                track: { background: "#1677ff" },
-                rail: { background: "rgba(255,255,255,0.2)" },
-                handle: { borderColor: "#1677ff" },
-              }}
             />
           </div>
           <div style={styles.controlsRow}>
-            <button style={styles.controlBtn} onClick={togglePlay} title="Play/Pause (Space)">
+            <button
+              style={styles.controlBtn}
+              onClick={togglePlay}
+              title="Play/Pause (Space)"
+            >
               {playing
                 ? <PauseCircleOutlined style={{ fontSize: "24px" }} />
                 : <PlayCircleOutlined style={{ fontSize: "24px" }} />}
             </button>
-            <button style={styles.controlBtn} onClick={() => skip(-SKIP_SECONDS)} title={`Rewind ${SKIP_SECONDS}s (Left Arrow)`}>
+            <button
+              style={styles.controlBtn}
+              onClick={() => skip(-SKIP_SECONDS)}
+              title={`Rewind ${SKIP_SECONDS}s (Left Arrow)`}
+            >
               <BackwardOutlined />
             </button>
-            <button style={styles.controlBtn} onClick={() => skip(SKIP_SECONDS)} title={`Forward ${SKIP_SECONDS}s (Right Arrow)`}>
+            <button
+              style={styles.controlBtn}
+              onClick={() => skip(SKIP_SECONDS)}
+              title={`Forward ${SKIP_SECONDS}s (Right Arrow)`}
+            >
               <ForwardOutlined />
             </button>
             <span style={styles.timeText}>
@@ -435,7 +381,11 @@ function VideoPlayer({ src, open, onClose }) {
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <button style={styles.controlBtn} onClick={toggleFullscreen} title="Fullscreen (F)">
+            <button
+              style={styles.controlBtn}
+              onClick={toggleFullscreen}
+              title="Fullscreen (F)"
+            >
               {isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
             </button>
           </div>
@@ -451,24 +401,18 @@ function VideoCard({ item, currentDir, onDelete, onPlay }) {
 
   return (
     <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
+      className="tech-card"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       <div style={styles.videoThumb} onClick={() => onPlay(item.Name)}>
-        <video
-          src={src}
-          style={styles.videoThumbEl}
-          preload="metadata"
-          muted
-        />
+        <video src={src} style={styles.videoThumbEl} preload="metadata" muted />
         <div
           style={{
             ...styles.playOverlay,
-            background: hover ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0.3)",
+            background: hover
+              ? "rgba(0,0,0,0.55)"
+              : "rgba(0,0,0,0.35)",
           }}
         >
           <PlayCircleOutlined style={styles.playIcon} />
@@ -496,20 +440,10 @@ function VideoCard({ item, currentDir, onDelete, onPlay }) {
 }
 
 function FolderCard({ item, onEnter }) {
-  const [hover, setHover] = useState(false);
-
   return (
-    <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
-      onClick={() => onEnter(item.Name)}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <FolderOutlined style={styles.folderIcon} />
-      <div style={styles.folderName} title={item.Name}>
+    <div className="tech-card" onClick={() => onEnter(item.Name)}>
+      <FolderOutlined className="tech-folder-icon" />
+      <div className="tech-name" title={item.Name}>
         {item.Name}
       </div>
     </div>
@@ -517,19 +451,14 @@ function FolderCard({ item, onEnter }) {
 }
 
 function VideoManage() {
+  const sw = useScreenWidth();
   const [messageApi, contextHolder] = message.useMessage();
 
   const [currentDir, setCurrentDir] = useState("/video/");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
   const [pathItems, setPathItems] = useState([
-    {
-      title: <HomeOutlined />,
-      path: "/",
-    },
-    {
-      title: "video",
-      path: "/video/",
-    },
+    { title: <HomeOutlined />, path: "/" },
+    { title: "video", path: "/video/" },
   ]);
   const [showCount, setShowCount] = useState(PAGE_SIZE);
 
@@ -549,9 +478,7 @@ function VideoManage() {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          loadMore();
-        }
+        if (entry.isIntersecting) loadMore();
       },
       { rootMargin: "300px" },
     );
@@ -562,66 +489,40 @@ function VideoManage() {
   useEffect(() => {
     ReadDir(currentDir).then((data) => {
       setShowCount(PAGE_SIZE);
-      dispatch({
-        type: "list",
-        payload: data.List ? data.List : [],
-      });
+      dispatch({ type: "list", payload: data.List ? data.List : [] });
     });
   }, []);
 
   const changeDir = (dirName) => {
     const nextDir = path.normalize(path.join(currentDir, dirName));
     setCurrentDir(nextDir);
-    setPathItems([
-      ...pathItems,
-      {
-        title: dirName,
-        path: nextDir,
-      },
-    ]);
+    setPathItems([...pathItems, { title: dirName, path: nextDir }]);
     setShowCount(PAGE_SIZE);
     ReadDir(nextDir).then((data) => {
-      dispatch({
-        type: "list",
-        payload: data?.List,
-      });
+      dispatch({ type: "list", payload: data?.List });
     });
   };
 
   const changeDirAbsolute = ({ absolutePath }) => {
-    if (absolutePath === currentDir) {
-      return;
-    }
+    if (absolutePath === currentDir) return;
     setCurrentDir(absolutePath);
     let absPath = "";
     const newPathItems = [];
-
     for (const item of pathItems) {
       absPath = path.join(absPath, item.path);
       newPathItems.push(item);
-      if (absPath === absolutePath) {
-        break;
-      }
+      if (absPath === absolutePath) break;
     }
     setPathItems(newPathItems);
     setShowCount(PAGE_SIZE);
-
     ReadDir(absolutePath).then((data) => {
-      dispatch({
-        type: "list",
-        payload: data?.List,
-      });
+      dispatch({ type: "list", payload: data?.List });
     });
   };
 
   const deleteFile = (filepath) => {
     DeleteFile(filepath)
-      .then(() => {
-        dispatch({
-          type: "remove",
-          payload: path.basename(filepath),
-        });
-      })
+      .then(() => dispatch({ type: "remove", payload: path.basename(filepath) }))
       .catch((err) => {
         messageApi.open({
           type: "error",
@@ -638,80 +539,46 @@ function VideoManage() {
 
   const uploadFile = () => {
     if (fileList.length == 0) {
-      messageApi.open({
-        type: "error",
-        content: "Please select files",
-      });
+      messageApi.open({ type: "error", content: "Please select files" });
       return;
     }
-
     fileList.map((file) => {
       const stream = new ReadableStream({
         start(controller) {
           const reader = new FileReader();
-
           reader.onload = () => {
             const chunkSize = 1024 * 1024;
             let offset = 0;
-
             const readNextChunk = () => {
               const chunk = reader.result.slice(offset, offset + chunkSize);
               if (chunk.byteLength > 0) {
                 controller.enqueue(new Uint8Array(chunk));
                 offset += chunkSize;
-
                 let percent = (offset / file.size) * 100;
-                if (percent > 100) {
-                  percent = 100;
-                }
+                if (percent > 100) percent = 100;
                 dispatchFileList({
                   type: "process",
-                  payload: {
-                    file,
-                    process: percent,
-                  },
+                  payload: { file, process: percent },
                 });
-
                 readNextChunk();
               } else {
                 controller.close();
               }
             };
-
             readNextChunk();
           };
-
           reader.readAsArrayBuffer(file);
         },
       });
       file.stream = stream;
-
       const formData = new FormData();
       formData.append("File", file);
-      dispatchFileList({
-        type: "process",
-        payload: {
-          file,
-          process: 0,
-        },
-      });
+      dispatchFileList({ type: "process", payload: { file, process: 0 } });
       UploadFile(path.join(currentDir, file.name), formData)
-        .then(() => {
-          dispatchFileList({
-            type: "done",
-            payload: {
-              file,
-            },
-          });
-        })
+        .then(() => dispatchFileList({ type: "done", payload: { file } }))
         .catch((err) => {
           console.log(err);
-          dispatchFileList({
-            type: "error",
-            payload: {
-              file,
-            },
-          });
+          dispatchFileList({ type: "error", payload: { file } });
           messageApi.open({
             type: "error",
             content: "Upload failed: " + err.message,
@@ -736,13 +603,17 @@ function VideoManage() {
     );
   });
 
+  const videoGridCols =
+    sw < 480 ? "1fr" : sw < 768 ? "repeat(auto-fill, minmax(240px, 1fr))" : "repeat(auto-fill, minmax(280px, 1fr))";
+  const drawerWidth = sw < 768 ? "100%" : "50%";
+
   const items = allItems.slice(0, showCount);
 
   return (
     <>
       {contextHolder}
-      <div style={styles.page}>
-        <div style={styles.header}>
+      <div className="tech-page">
+        <div className="tech-header">
           <PathTravel items={pathItems} onClick={changeDirAbsolute} />
           <Button
             type="primary"
@@ -753,10 +624,10 @@ function VideoManage() {
           </Button>
         </div>
 
-        <div style={styles.content}>
+        <div className="tech-content">
           <Drawer
             open={showUploadDrawer}
-            width="50%"
+            width={drawerWidth}
             maskClosable={false}
             onClose={() => {
               setShowUploadDrawer(false);
@@ -774,9 +645,9 @@ function VideoManage() {
                   dispatchFileList({ type: "add", payload: file });
                   return false;
                 }}
-                onRemove={(file) => {
-                  dispatchFileList({ type: "remove", payload: file });
-                }}
+                onRemove={(file) =>
+                  dispatchFileList({ type: "remove", payload: file })
+                }
                 fileList={fileList}
                 multiple={true}
                 listType="picture"
@@ -785,7 +656,7 @@ function VideoManage() {
                 <p className="ant-upload-drag-icon">
                   <InboxOutlined />
                 </p>
-                <p style={{ color: "#999" }}>
+                <p style={{ color: "#94a3b8" }}>
                   Drag video files here or click to select
                 </p>
               </Dragger>
@@ -793,14 +664,19 @@ function VideoManage() {
           </Drawer>
 
           {items.length === 0 ? (
-            <div style={styles.emptyWrap}>
+            <div className="tech-empty">
               <Empty description="Empty directory" />
             </div>
           ) : (
-            <div style={styles.grid}>
+            <div
+              className="tech-grid"
+              style={{
+                gridTemplateColumns: videoGridCols,
+              }}
+            >
               {items}
               {showCount < allItems.length && (
-                <div ref={sentinelRef} style={styles.sentinel}>
+                <div ref={sentinelRef} className="tech-sentinel">
                   <Spin />
                 </div>
               )}

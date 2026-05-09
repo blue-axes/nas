@@ -20,5 +20,5 @@ Database:
 #    AutoMigrateLevel: "auto"
 #    MaxConnCount: 10
 Nas:
-  SimpleUploadRoot: "/aaa"
+  SimpleUploadRoot: "/data"
   RealFilenamePolicy: "origin"

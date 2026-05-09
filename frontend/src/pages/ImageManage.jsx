@@ -23,6 +23,7 @@ import path from "path-browserify";
 import { ImageList, FileList } from "./../reducers/ImageManageReducer";
 import { ReadDir, UploadFile, DeleteFile } from "../apis/SimpleUpload";
 import PathTravel from "../components/PathTravel";
+import useScreenWidth from "../hooks/useScreenWidth";
 
 const Header = Layout.Header;
 const Content = Layout.Content;
@@ -31,74 +32,19 @@ const { Dragger } = Upload;
 const PAGE_SIZE = 20;
 
 const styles = {
-  page: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    background: "#f5f5f5",
-  },
-  header: {
-    background: "#fff",
-    padding: "12px 24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottom: "1px solid #f0f0f0",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-  },
-  content: {
-    flex: 1,
-    overflow: "auto",
-    padding: "20px 24px",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "16px",
-  },
-  card: {
-    position: "relative",
-    borderRadius: "10px",
-    overflow: "hidden",
-    background: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    cursor: "pointer",
-  },
-  cardHover: {
-    transform: "translateY(-3px)",
-    boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
-  },
-  folderIcon: {
-    fontSize: "72px",
-    color: "#faad14",
-    display: "block",
-    lineHeight: "180px",
-    textAlign: "center",
-  },
-  folderName: {
-    padding: "10px 12px",
-    fontSize: "14px",
-    fontWeight: 500,
-    textAlign: "center",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    borderTop: "1px solid #f5f5f5",
-    color: "#333",
-  },
   imageWrap: {
     position: "relative",
     aspectRatio: "1 / 1",
     overflow: "hidden",
-    background: "#fafafa",
+    background: "rgba(10, 14, 39, 0.95)",
   },
   imageOverlay: {
     position: "absolute",
     inset: 0,
-    background: "linear-gradient(transparent 60%, rgba(0,0,0,0.45))",
+    background:
+      "linear-gradient(transparent 55%, rgba(0,0,0,0.7))",
     opacity: 0,
-    transition: "opacity 0.2s ease",
+    transition: "opacity 0.25s ease",
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "space-between",
@@ -109,30 +55,17 @@ const styles = {
     opacity: 1,
   },
   imageName: {
-    color: "#fff",
+    color: "#e2e8f0",
     fontSize: "13px",
     fontWeight: 500,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
     maxWidth: "75%",
   },
   deleteBtn: {
     pointerEvents: "auto",
-  },
-  sentinel: {
-    width: "100%",
-    padding: "24px",
-    textAlign: "center",
-    gridColumn: "1 / -1",
-  },
-  emptyWrap: {
-    gridColumn: "1 / -1",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "300px",
   },
 };
 
@@ -189,10 +122,7 @@ function ImageCard({ item, currentDir, onDelete }) {
 
   return (
     <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
+      className="tech-card"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -212,7 +142,7 @@ function ImageCard({ item, currentDir, onDelete }) {
             type="text"
             size="small"
             danger
-            icon={<DeleteOutlined style={{ color: "#fff" }} />}
+            icon={<DeleteOutlined style={{ color: "#f43f5e" }} />}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(path.join(currentDir, item.Name));
@@ -225,20 +155,10 @@ function ImageCard({ item, currentDir, onDelete }) {
 }
 
 function FolderCard({ item, onEnter }) {
-  const [hover, setHover] = useState(false);
-
   return (
-    <div
-      style={{
-        ...styles.card,
-        ...(hover ? styles.cardHover : {}),
-      }}
-      onClick={() => onEnter(item.Name)}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <FolderOutlined style={styles.folderIcon} />
-      <div style={styles.folderName} title={item.Name}>
+    <div className="tech-card" onClick={() => onEnter(item.Name)}>
+      <FolderOutlined className="tech-folder-icon" />
+      <div className="tech-name" title={item.Name}>
         {item.Name}
       </div>
     </div>
@@ -246,19 +166,14 @@ function FolderCard({ item, onEnter }) {
 }
 
 function ImageManage() {
+  const sw = useScreenWidth();
   const [messageApi, contextHolder] = message.useMessage();
 
   const [currentDir, setCurrentDir] = useState("/img/");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
   const [pathItems, setPathItems] = useState([
-    {
-      title: <HomeOutlined />,
-      path: "/",
-    },
-    {
-      title: "img",
-      path: "/img/",
-    },
+    { title: <HomeOutlined />, path: "/" },
+    { title: "img", path: "/img/" },
   ]);
   const [showCount, setShowCount] = useState(PAGE_SIZE);
 
@@ -275,9 +190,7 @@ function ImageManage() {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          loadMore();
-        }
+        if (entry.isIntersecting) loadMore();
       },
       { rootMargin: "300px" },
     );
@@ -288,65 +201,41 @@ function ImageManage() {
   useEffect(() => {
     ReadDir(currentDir).then((data) => {
       setShowCount(PAGE_SIZE);
-      dispatch({
-        type: "list",
-        payload: data.List ? data.List : [],
-      });
+      dispatch({ type: "list", payload: data.List ? data.List : [] });
     });
   }, []);
 
   const changeDir = (dirName) => {
     const nextDir = path.normalize(path.join(currentDir, dirName));
     setCurrentDir(nextDir);
-    setPathItems([
-      ...pathItems,
-      {
-        title: dirName,
-        path: nextDir,
-      },
-    ]);
+    setPathItems([...pathItems, { title: dirName, path: nextDir }]);
     setShowCount(PAGE_SIZE);
     ReadDir(nextDir).then((data) => {
-      dispatch({
-        type: "list",
-        payload: data?.List,
-      });
+      dispatch({ type: "list", payload: data?.List });
     });
   };
 
   const changeDirAbsolute = ({ absolutePath }) => {
-    if (absolutePath === currentDir) {
-      return;
-    }
+    if (absolutePath === currentDir) return;
     setCurrentDir(absolutePath);
     let absPath = "";
     const newPathItems = [];
-
     for (const item of pathItems) {
       absPath = path.join(absPath, item.path);
       newPathItems.push(item);
-      if (absPath === absolutePath) {
-        break;
-      }
+      if (absPath === absolutePath) break;
     }
     setPathItems(newPathItems);
     setShowCount(PAGE_SIZE);
-
     ReadDir(absolutePath).then((data) => {
-      dispatch({
-        type: "list",
-        payload: data?.List,
-      });
+      dispatch({ type: "list", payload: data?.List });
     });
   };
 
   const deleteFile = (filepath) => {
     DeleteFile(filepath)
       .then(() => {
-        dispatch({
-          type: "remove",
-          payload: path.basename(filepath),
-        });
+        dispatch({ type: "remove", payload: path.basename(filepath) });
       })
       .catch((err) => {
         messageApi.open({
@@ -359,79 +248,45 @@ function ImageManage() {
 
   const uploadFile = () => {
     if (fileList.length == 0) {
-      messageApi.open({
-        type: "error",
-        content: "Please select files",
-      });
+      messageApi.open({ type: "error", content: "Please select files" });
     }
-
     fileList.map((file) => {
       const stream = new ReadableStream({
         start(controller) {
           const reader = new FileReader();
-
           reader.onload = () => {
             const chunkSize = 1024 * 1024;
             let offset = 0;
-
             const readNextChunk = () => {
               const chunk = reader.result.slice(offset, offset + chunkSize);
               if (chunk.byteLength > 0) {
                 controller.enqueue(new Uint8Array(chunk));
                 offset += chunkSize;
-
                 let percent = (offset / file.size) * 100;
-                if (percent > 100) {
-                  percent = 100;
-                }
+                if (percent > 100) percent = 100;
                 dispatchFileList({
                   type: "process",
-                  payload: {
-                    file,
-                    process: percent,
-                  },
+                  payload: { file, process: percent },
                 });
-
                 readNextChunk();
               } else {
                 controller.close();
               }
             };
-
             readNextChunk();
           };
-
           reader.readAsArrayBuffer(file);
         },
       });
       file.stream = stream;
-
       const formData = new FormData();
       formData.append("File", file);
-      dispatchFileList({
-        type: "process",
-        payload: {
-          file,
-          process: 0,
-        },
-      });
+      dispatchFileList({ type: "process", payload: { file, process: 0 } });
       UploadFile(path.join(currentDir, file.name), formData)
-        .then(() => {
-          dispatchFileList({
-            type: "done",
-            payload: {
-              file,
-            },
-          });
-        })
+        .then(() => dispatchFileList({ type: "done", payload: { file } }))
         .catch((err) => {
           console.log(err);
-          dispatchFileList({
-            type: "error",
-            payload: {
-              file,
-            },
-          });
+          dispatchFileList({ type: "error", payload: { file } });
           messageApi.open({
             type: "error",
             content: "Upload failed: " + err.message,
@@ -455,13 +310,17 @@ function ImageManage() {
     );
   });
 
+  const imgGridCols =
+    sw < 480 ? "repeat(2, 1fr)" : sw < 768 ? "repeat(auto-fill, minmax(150px, 1fr))" : "repeat(auto-fill, minmax(220px, 1fr))";
+  const drawerWidth = sw < 768 ? "100%" : "50%";
+
   const items = allItems.slice(0, showCount);
 
   return (
     <>
       {contextHolder}
-      <div style={styles.page}>
-        <div style={styles.header}>
+      <div className="tech-page">
+        <div className="tech-header">
           <PathTravel items={pathItems} onClick={changeDirAbsolute} />
           <Button
             type="primary"
@@ -472,10 +331,10 @@ function ImageManage() {
           </Button>
         </div>
 
-        <div style={styles.content}>
+        <div className="tech-content">
           <Drawer
             open={showUploadDrawer}
-            width="50%"
+            width={drawerWidth}
             maskClosable={false}
             onClose={() => {
               setShowUploadDrawer(false);
@@ -493,9 +352,9 @@ function ImageManage() {
                   dispatchFileList({ type: "add", payload: file });
                   return false;
                 }}
-                onRemove={(file) => {
-                  dispatchFileList({ type: "remove", payload: file });
-                }}
+                onRemove={(file) =>
+                  dispatchFileList({ type: "remove", payload: file })
+                }
                 fileList={fileList}
                 multiple={true}
                 listType="picture"
@@ -503,7 +362,7 @@ function ImageManage() {
                 <p className="ant-upload-drag-icon">
                   <InboxOutlined />
                 </p>
-                <p style={{ color: "#999" }}>
+                <p style={{ color: "#94a3b8" }}>
                   Drag files here or click to select
                 </p>
               </Dragger>
@@ -511,14 +370,19 @@ function ImageManage() {
           </Drawer>
 
           {items.length === 0 ? (
-            <div style={styles.emptyWrap}>
+            <div className="tech-empty">
               <Empty description="Empty directory" />
             </div>
           ) : (
-            <div style={styles.grid}>
+            <div
+              className="tech-grid"
+              style={{
+                gridTemplateColumns: imgGridCols,
+              }}
+            >
               {items}
               {showCount < allItems.length && (
-                <div ref={sentinelRef} style={styles.sentinel}>
+                <div ref={sentinelRef} className="tech-sentinel">
                   <Spin />
                 </div>
               )}

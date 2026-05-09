@@ -16,9 +16,16 @@ func InitRouter(svc *service.Service, e *echo.Group) {
 	e.POST("/object/*", handler.Upload)
 	// 文件删除
 	e.DELETE("/object/*", handler.Delete)
+	// 更新文件标签
+	e.PATCH("/object/*", handler.UpdateTags)
 
 	// 文件列表
 	e.GET("/objects/*", handler.ReadDir)
 	// 文件批量上传
 	e.POST("/objects/", handler.MultiUpload)
+
+	// 搜索文件
+	e.GET("/search", handler.Search)
+	// 创建目录
+	e.POST("/mkdir/*", handler.Mkdir)
 }

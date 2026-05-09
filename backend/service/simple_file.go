@@ -125,6 +125,12 @@ func (svc *Service) SimpleDeleteFile(ctx *context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if info.IsDir {
+		err = svc.store.RDB().Transaction(func(store rdb.TxStore) error {
+			return store.DeleteDir(ctx, name)
+		})
+		return err
+	}
 	err = svc.store.RDB().Transaction(func(store rdb.TxStore) error {
 		err = svc.vfs.Remove(info.Path)
 		if err != nil {
@@ -144,4 +150,21 @@ func (svc *Service) SimpleListFiles(ctx *context.Context, filePath string) ([]ty
 		cond = &tmp
 	}
 	return svc.store.RDB().ListFile(ctx, cond, nil)
+}
+
+func (svc *Service) SimpleSearchFiles(ctx *context.Context, keyword, tag string) ([]types.File, error) {
+	return svc.store.RDB().SearchFiles(ctx, keyword, tag)
+}
+
+func (svc *Service) SimpleUpdateFileTags(ctx *context.Context, name string, tags []string) error {
+	return svc.store.RDB().UpdateFileTags(ctx, name, tags)
+}
+
+func (svc *Service) SimpleMkdir(ctx *context.Context, dirPath string) error {
+	dirPath = path.Clean(dirPath)
+	err := svc.vfs.MkdirAll(path.Join(svc.cfg.Nas.SimpleUploadRoot, dirPath), 0700)
+	if err != nil {
+		return err
+	}
+	return svc.store.RDB().CreateDir(ctx, dirPath)
 }

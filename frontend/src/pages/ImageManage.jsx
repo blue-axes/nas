@@ -8,6 +8,10 @@ import {
   Spin,
   Tooltip,
   Empty,
+  Modal,
+  Input,
+  Tag,
+  Popover,
 } from "antd";
 import {
   UploadOutlined,
@@ -15,14 +19,18 @@ import {
   HomeOutlined,
   InboxOutlined,
   DeleteOutlined,
+  TagsOutlined,
+  FolderAddOutlined,
 } from "@ant-design/icons";
 import { useImmerReducer } from "use-immer";
 import { useEffect, useState, useRef, useCallback } from "react";
 import path from "path-browserify";
 
 import { ImageList, FileList } from "./../reducers/ImageManageReducer";
-import { ReadDir, UploadFile, DeleteFile } from "../apis/SimpleUpload";
+import { ReadDir, UploadFile, DeleteFile, SearchFiles, Mkdir } from "../apis/SimpleUpload";
 import PathTravel from "../components/PathTravel";
+import SearchBar from "../components/SearchBar";
+import TagEditor from "../components/TagEditor";
 import useScreenWidth from "../hooks/useScreenWidth";
 
 const Header = Layout.Header;
@@ -41,8 +49,7 @@ const styles = {
   imageOverlay: {
     position: "absolute",
     inset: 0,
-    background:
-      "linear-gradient(transparent 55%, rgba(0,0,0,0.7))",
+    background: "linear-gradient(transparent 55%, rgba(0,0,0,0.7))",
     opacity: 0,
     transition: "opacity 0.25s ease",
     display: "flex",
@@ -51,9 +58,7 @@ const styles = {
     padding: "10px",
     pointerEvents: "none",
   },
-  imageOverlayVisible: {
-    opacity: 1,
-  },
+  imageOverlayVisible: { opacity: 1 },
   imageName: {
     color: "#e2e8f0",
     fontSize: "13px",
@@ -64,9 +69,7 @@ const styles = {
     textShadow: "0 1px 4px rgba(0,0,0,0.6)",
     maxWidth: "75%",
   },
-  deleteBtn: {
-    pointerEvents: "auto",
-  },
+  actionBtn: { pointerEvents: "auto" },
 };
 
 function LazyImage({ src, name }) {
@@ -92,23 +95,9 @@ function LazyImage({ src, name }) {
   return (
     <div ref={containerRef} style={styles.imageWrap}>
       {inView ? (
-        <Image
-          src={src}
-          alt={name}
-          width="100%"
-          height="100%"
-          style={{ objectFit: "cover" }}
-          preview={{ mask: "Preview" }}
-        />
+        <Image src={src} alt={name} width="100%" height="100%" style={{ objectFit: "cover" }} preview={{ mask: "Preview" }} />
       ) : (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100%",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
           <Spin size="small" />
         </div>
       )}
@@ -116,39 +105,64 @@ function LazyImage({ src, name }) {
   );
 }
 
-function ImageCard({ item, currentDir, onDelete }) {
+function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
   const [hover, setHover] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
   const src = path.join(pathPrefix, currentDir, item.Name);
+  const filepath = path.join(currentDir, item.Name);
 
   return (
-    <div
-      className="tech-card"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
+    <div className="tech-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <LazyImage src={src} name={item.Name} />
-      <div
-        style={{
-          ...styles.imageOverlay,
-          ...(hover ? styles.imageOverlayVisible : {}),
-        }}
-      >
-        <span style={styles.imageName} title={item.Name}>
-          {item.Name}
-        </span>
-        <Tooltip title="Delete">
-          <Button
-            style={styles.deleteBtn}
-            type="text"
-            size="small"
-            danger
-            icon={<DeleteOutlined style={{ color: "#f43f5e" }} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(path.join(currentDir, item.Name));
-            }}
-          />
-        </Tooltip>
+      <div style={{ ...styles.imageOverlay, ...(hover || tagOpen ? styles.imageOverlayVisible : {}) }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={styles.imageName} title={item.Name}>
+            {item.Name}
+          </span>
+          {(item.Tags || []).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginTop: 4 }}>
+              {(item.Tags || []).slice(0, 3).map((t) => (
+                <Tag key={t} color="cyan" style={{ margin: 0, fontSize: 10, lineHeight: "16px", padding: "0 4px", borderRadius: 4 }}>
+                  {t}
+                </Tag>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 2 }}>
+          <Popover
+            open={tagOpen}
+            onOpenChange={setTagOpen}
+            trigger="click"
+            placement="left"
+            content={
+              <TagEditor
+                filepath={filepath}
+                currentTags={item.Tags}
+                onUpdated={(newTags) => {
+                  onTagsUpdated(item.Name, newTags);
+                }}
+              />
+            }
+          >
+            <Tooltip title="Edit Tags">
+              <Button style={styles.actionBtn} type="text" size="small" icon={<TagsOutlined style={{ color: "#00d4ff" }} />} />
+            </Tooltip>
+          </Popover>
+          <Tooltip title="Delete">
+            <Button
+              style={styles.actionBtn}
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined style={{ color: "#f43f5e" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(path.join(currentDir, item.Name));
+              }}
+            />
+          </Tooltip>
+        </div>
       </div>
     </div>
   );
@@ -180,6 +194,11 @@ function ImageManage() {
   const [imageList, dispatch] = useImmerReducer(ImageList, []);
   const [fileList, dispatchFileList] = useImmerReducer(FileList, []);
   const sentinelRef = useRef(null);
+
+  const [searching, setSearching] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const loadMore = useCallback(() => {
     setShowCount((prev) => prev + PAGE_SIZE);
@@ -238,11 +257,7 @@ function ImageManage() {
         dispatch({ type: "remove", payload: path.basename(filepath) });
       })
       .catch((err) => {
-        messageApi.open({
-          type: "error",
-          content: "Delete failed: " + err.message,
-          duration: 5,
-        });
+        messageApi.open({ type: "error", content: "Delete failed: " + err.message, duration: 5 });
       });
   };
 
@@ -264,10 +279,7 @@ function ImageManage() {
                 offset += chunkSize;
                 let percent = (offset / file.size) * 100;
                 if (percent > 100) percent = 100;
-                dispatchFileList({
-                  type: "process",
-                  payload: { file, process: percent },
-                });
+                dispatchFileList({ type: "process", payload: { file, process: percent } });
                 readNextChunk();
               } else {
                 controller.close();
@@ -287,13 +299,43 @@ function ImageManage() {
         .catch((err) => {
           console.log(err);
           dispatchFileList({ type: "error", payload: { file } });
-          messageApi.open({
-            type: "error",
-            content: "Upload failed: " + err.message,
-            duration: 5,
-          });
+          messageApi.open({ type: "error", content: "Upload failed: " + err.message, duration: 5 });
         });
     });
+  };
+
+  const handleSearch = useCallback((keyword, tag) => {
+    if (keyword || tag) {
+      setSearching(true);
+      SearchFiles(keyword, tag).then((data) => {
+        dispatch({ type: "list", payload: data?.List || [] });
+      });
+    } else {
+      setSearching(false);
+      ReadDir(currentDir).then((data) => {
+        dispatch({ type: "list", payload: data?.List || [] });
+      });
+    }
+  }, [currentDir, dispatch]);
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    setCreatingFolder(true);
+    Mkdir(path.join(currentDir, name))
+      .then(() => {
+        setShowNewFolder(false);
+        setNewFolderName("");
+        ReadDir(currentDir).then((data) => {
+          dispatch({ type: "list", payload: data?.List || [] });
+        });
+      })
+      .catch((err) => messageApi.open({ type: "error", content: "Create folder failed: " + err.message }))
+      .finally(() => setCreatingFolder(false));
+  };
+
+  const handleTagsUpdated = (itemName, newTags) => {
+    dispatch({ type: "updateTags", payload: { name: itemName, tags: newTags } });
   };
 
   const allItems = imageList.map((item) => {
@@ -306,6 +348,7 @@ function ImageManage() {
         item={item}
         currentDir={currentDir}
         onDelete={deleteFile}
+        onTagsUpdated={handleTagsUpdated}
       />
     );
   });
@@ -320,71 +363,74 @@ function ImageManage() {
     <>
       {contextHolder}
       <div className="tech-page">
-        <div className="tech-header">
+        <div className="tech-header" style={{ gap: 12 }}>
           <PathTravel items={pathItems} onClick={changeDirAbsolute} />
-          <Button
-            type="primary"
-            icon={<UploadOutlined />}
-            onClick={() => setShowUploadDrawer(true)}
-          >
-            Upload
+          <div style={{ flex: 1 }} />
+          {!searching && (
+            <Button
+              icon={<FolderAddOutlined />}
+              size="small"
+              style={{ background: "rgba(0,212,255,0.08)", borderColor: "rgba(0,212,255,0.2)", color: "#00d4ff" }}
+              onClick={() => setShowNewFolder(true)}
+            >
+              {sw > 480 && "New Folder"}
+            </Button>
+          )}
+          <Button type="primary" icon={<UploadOutlined />} onClick={() => setShowUploadDrawer(true)}>
+            {sw > 480 && "Upload"}
           </Button>
         </div>
 
         <div className="tech-content">
+          <div style={{ marginBottom: 16 }}>
+            <SearchBar onSearch={handleSearch} />
+          </div>
+
           <Drawer
             open={showUploadDrawer}
             width={drawerWidth}
             maskClosable={false}
-            onClose={() => {
-              setShowUploadDrawer(false);
-              dispatchFileList({ type: "clear" });
-            }}
-            extra={
-              <Button type="primary" onClick={uploadFile}>
-                Start Upload
-              </Button>
-            }
+            onClose={() => { setShowUploadDrawer(false); dispatchFileList({ type: "clear" }); }}
+            extra={<Button type="primary" onClick={uploadFile}>Start Upload</Button>}
           >
             <div style={{ height: "15%" }}>
               <Dragger
-                beforeUpload={(file) => {
-                  dispatchFileList({ type: "add", payload: file });
-                  return false;
-                }}
-                onRemove={(file) =>
-                  dispatchFileList({ type: "remove", payload: file })
-                }
+                beforeUpload={(file) => { dispatchFileList({ type: "add", payload: file }); return false; }}
+                onRemove={(file) => dispatchFileList({ type: "remove", payload: file })}
                 fileList={fileList}
                 multiple={true}
                 listType="picture"
               >
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined />
-                </p>
-                <p style={{ color: "#94a3b8" }}>
-                  Drag files here or click to select
-                </p>
+                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                <p style={{ color: "#94a3b8" }}>Drag files here or click to select</p>
               </Dragger>
             </div>
           </Drawer>
 
+          <Modal
+            open={showNewFolder}
+            onCancel={() => { setShowNewFolder(false); setNewFolderName(""); }}
+            onOk={handleCreateFolder}
+            confirmLoading={creatingFolder}
+            title="New Folder"
+          >
+            <Input
+              placeholder="Folder name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onPressEnter={handleCreateFolder}
+            />
+          </Modal>
+
           {items.length === 0 ? (
             <div className="tech-empty">
-              <Empty description="Empty directory" />
+              <Empty description={searching ? "No results found" : "Empty directory"} />
             </div>
           ) : (
-            <div
-              className="tech-grid"
-              style={{
-                gridTemplateColumns: imgGridCols,
-              }}
-            >
+            <div className="tech-grid" style={{ gridTemplateColumns: imgGridCols }}>
               {items}
-              {showCount < allItems.length && (
-                <div ref={sentinelRef} className="tech-sentinel">
-                  <Spin />
-                </div>
+              {!searching && showCount < allItems.length && (
+                <div ref={sentinelRef} className="tech-sentinel"><Spin /></div>
               )}
             </div>
           )}

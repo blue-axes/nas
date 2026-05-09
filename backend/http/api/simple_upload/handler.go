@@ -1,6 +1,7 @@
 package simple_upload
 
 import (
+	"encoding/json"
 	"fmt"
 	api "github.com/blue-axes/tmpl/http/api"
 	"github.com/blue-axes/tmpl/pkg/constants"
@@ -189,7 +190,10 @@ func (h FileObjectHandler) ReadDir(c echo.Context) error {
 			fileType = "file"
 			size     = item.Size
 		)
-		if item.Name != req.Name && path.Dir(item.Name) != path.Dir(req.Name) {
+		if item.IsDir {
+			fileType = "dir"
+			size = 0
+		} else if item.Name != req.Name && path.Dir(item.Name) != path.Dir(req.Name) {
 			fileType = "dir"
 			size = 0
 		}
@@ -200,11 +204,15 @@ func (h FileObjectHandler) ReadDir(c echo.Context) error {
 		}
 		distinctMap[shortName] = true
 
-		resp.List = append(resp.List, api_schema.FileInfo{
+		fi := api_schema.FileInfo{
 			Name:     shortName,
 			Size:     size,
 			FileType: fileType,
-		})
+		}
+		if !item.IsDir {
+			fi.Tags = item.Tags
+		}
+		resp.List = append(resp.List, fi)
 	}
 	return h.RespJson(c, resp, nil)
 }
@@ -240,6 +248,81 @@ func (h FileObjectHandler) MultiUpload(c echo.Context) error {
 		}
 	}
 	return h.RespJson(c, nil, nil)
+}
+
+func (h FileObjectHandler) Search(c echo.Context) error {
+	ctx, _ := c.Get(constants.CtxKeyContext).(*context.Context)
+	var req api_schema.SearchReq
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+	entry, err := h.svc.SimpleSearchFiles(ctx, req.Keyword, req.Tag)
+	if err != nil {
+		return err
+	}
+	type searchResult struct {
+		Name     string   `json:"Name"`
+		Size     uint64   `json:"Size"`
+		FileType string   `json:"FileType"`
+		Tags     []string `json:"Tags,omitempty"`
+	}
+	var list []searchResult
+	for _, item := range entry {
+		ft := "file"
+		if item.IsDir {
+			ft = "dir"
+		}
+		list = append(list, searchResult{
+			Name:     item.Name,
+			Size:     item.Size,
+			FileType: ft,
+			Tags:     item.Tags,
+		})
+	}
+	return h.RespJson(c, map[string]interface{}{"List": list}, nil)
+}
+
+func (h FileObjectHandler) UpdateTags(c echo.Context) error {
+	ctx, _ := c.Get(constants.CtxKeyContext).(*context.Context)
+	var (
+		req struct {
+			api_schema.Filename
+		}
+		body api_schema.UpdateTagsReq
+		err  error
+	)
+	if err = c.Bind(&req); err != nil {
+		return err
+	}
+	req.Name, err = h.validFilename(req.Name)
+	if err != nil {
+		return h.ToHttpError(err)
+	}
+	bodyBytes, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		return h.ToHttpError(errors.WithCode(constants.ErrCodeInvalidArgs, "invalid body: "+err.Error()))
+	}
+	err = h.svc.SimpleUpdateFileTags(ctx, req.Name, body.Tags)
+	return h.RespJson(c, nil, err)
+}
+
+func (h FileObjectHandler) Mkdir(c echo.Context) error {
+	ctx, _ := c.Get(constants.CtxKeyContext).(*context.Context)
+	var req struct {
+		api_schema.Filename
+	}
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+	req.Name = h.correctName(req.Name)
+	if req.Name == "" {
+		return h.ToHttpError(errors.WithCode(constants.ErrCodeInvalidArgs, "directory name is required"))
+	}
+	err := h.svc.SimpleMkdir(ctx, req.Name)
+	return h.RespJson(c, nil, err)
 }
 
 func (h FileObjectHandler) validFilename(name string) (string, error) {

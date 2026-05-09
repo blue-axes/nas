@@ -11,6 +11,12 @@ export function ImageList(list, action) {
     case "remove":
       index = list.findIndex((item) => item.Name === payload);
       return [...list.slice(0, index), ...list.slice(index + 1, list.length)];
+    case "updateTags":
+      index = list.findIndex((item) => item.Name === payload.name);
+      if (index >= 0) {
+        list[index].Tags = payload.tags;
+      }
+      break;
     default:
       return list;
   }

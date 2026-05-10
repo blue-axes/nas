@@ -102,6 +102,8 @@ function App() {
   const navigate = useNavigate();
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [openKeys, setOpenKeys] = useState(["key0"]);
+  const [selectedKeys, setSelectedKeys] = useState(["key0key0"]);
 
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768);
@@ -116,6 +118,7 @@ function App() {
   const handleMenuClick = ({ key }) => {
     const to = keyLink[key];
     if (to) {
+      setSelectedKeys([key]);
       navigate(to);
       if (isMobile) {
         setSiderCollapsed(true);
@@ -342,6 +345,9 @@ function App() {
                         triggerSubMenuAction="click"
                         items={items}
                         onClick={handleMenuClick}
+                        openKeys={openKeys}
+                        selectedKeys={selectedKeys}
+                        onOpenChange={setOpenKeys}
                       />
                     </div>
                     <div
@@ -377,6 +383,9 @@ function App() {
                   triggerSubMenuAction="click"
                   items={items}
                   onClick={handleMenuClick}
+                  openKeys={openKeys}
+                  selectedKeys={selectedKeys}
+                  onOpenChange={setOpenKeys}
                 />
                 <div
                   style={{

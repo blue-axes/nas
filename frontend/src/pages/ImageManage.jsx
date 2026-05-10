@@ -12,6 +12,7 @@ import {
   Input,
   Tag,
   Popover,
+  Space,
 } from "antd";
 import {
   UploadOutlined,
@@ -21,6 +22,8 @@ import {
   DeleteOutlined,
   TagsOutlined,
   FolderAddOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { useImmerReducer } from "use-immer";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -70,40 +73,19 @@ const styles = {
     maxWidth: "75%",
   },
   actionBtn: { pointerEvents: "auto" },
+  toolbarBtn: {
+    color: "#fff",
+    background: "rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.25)",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: "13px",
+    padding: "4px 12px",
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+  },
 };
-
-function LazyImage({ src, name }) {
-  const containerRef = useRef(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.unobserve(el);
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={containerRef} style={styles.imageWrap}>
-      {inView ? (
-        <Image src={src} alt={name} width="100%" height="100%" style={{ objectFit: "cover" }} preview={{ mask: "Preview" }} />
-      ) : (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-          <Spin size="small" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
   const [hover, setHover] = useState(false);
@@ -113,7 +95,15 @@ function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
 
   return (
     <div className="tech-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <LazyImage src={src} name={item.Name} />
+      <div style={styles.imageWrap}>
+        <Image
+          src={src}
+          alt={item.Name}
+          width="100%"
+          height="100%"
+          style={{ objectFit: "cover" }}
+        />
+      </div>
       <div style={{ ...styles.imageOverlay, ...(hover || tagOpen ? styles.imageOverlayVisible : {}) }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={styles.imageName} title={item.Name}>
@@ -139,9 +129,7 @@ function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
               <TagEditor
                 filepath={filepath}
                 currentTags={item.Tags}
-                onUpdated={(newTags) => {
-                  onTagsUpdated(item.Name, newTags);
-                }}
+                onUpdated={(newTags) => { onTagsUpdated(item.Name, newTags); }}
               />
             }
           >
@@ -156,10 +144,7 @@ function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
               size="small"
               danger
               icon={<DeleteOutlined style={{ color: "#f43f5e" }} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(path.join(currentDir, item.Name));
-              }}
+              onClick={(e) => { e.stopPropagation(); onDelete(filepath); }}
             />
           </Tooltip>
         </div>
@@ -199,6 +184,9 @@ function ImageManage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [tagModalVisible, setTagModalVisible] = useState(false);
 
   const loadMore = useCallback(() => {
     setShowCount((prev) => prev + PAGE_SIZE);
@@ -259,6 +247,36 @@ function ImageManage() {
       .catch((err) => {
         messageApi.open({ type: "error", content: "Delete failed: " + err.message, duration: 5 });
       });
+  };
+
+  const imageFiles = useCallback(() => {
+    return imageList.filter((item) => item.FileType !== "dir");
+  }, [imageList]);
+
+  const currentPreviewFile = () => {
+    const files = imageFiles();
+    if (previewIndex >= 0 && previewIndex < files.length) {
+      return files[previewIndex];
+    }
+    return null;
+  };
+
+  const handlePreviewDelete = () => {
+    const file = currentPreviewFile();
+    if (!file) return;
+    const filepath = path.join(currentDir, file.Name);
+    setPreviewVisible(false);
+    setTimeout(() => deleteFile(filepath), 300);
+  };
+
+  const handlePreviewTag = () => {
+    setPreviewVisible(false);
+    setTimeout(() => setTagModalVisible(true), 300);
+  };
+
+  const handleTagsUpdated = (itemName, newTags) => {
+    dispatch({ type: "updateTags", payload: { name: itemName, tags: newTags } });
+    setTagModalVisible(false);
   };
 
   const uploadFile = () => {
@@ -334,10 +352,6 @@ function ImageManage() {
       .finally(() => setCreatingFolder(false));
   };
 
-  const handleTagsUpdated = (itemName, newTags) => {
-    dispatch({ type: "updateTags", payload: { name: itemName, tags: newTags } });
-  };
-
   const allItems = imageList.map((item) => {
     if (item.FileType == "dir") {
       return <FolderCard key={item.Name} item={item} onEnter={changeDir} />;
@@ -358,6 +372,46 @@ function ImageManage() {
   const drawerWidth = sw < 768 ? "100%" : "50%";
 
   const items = allItems.slice(0, showCount);
+
+  const toolbarRender = () => {
+    const total = imageFiles().length;
+    const cur = previewIndex + 1;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
+          {cur} / {total}
+        </span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            style={styles.toolbarBtn}
+            onClick={() => setPreviewIndex((p) => Math.max(0, p - 1))}
+            title="Previous (Left Arrow)"
+          >
+            <LeftOutlined style={{ fontSize: 12 }} /> Prev
+          </button>
+          <button
+            style={styles.toolbarBtn}
+            onClick={() => setPreviewIndex((p) => Math.min(total - 1, p + 1))}
+            title="Next (Right Arrow)"
+          >
+            Next <RightOutlined style={{ fontSize: 12 }} />
+          </button>
+        </div>
+        <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.2)" }} />
+        <button style={{ ...styles.toolbarBtn, borderColor: "rgba(0, 212, 255, 0.4)" }} onClick={handlePreviewTag}>
+          <TagsOutlined style={{ color: "#00d4ff" }} /> Tag
+        </button>
+        <button style={{ ...styles.toolbarBtn, borderColor: "rgba(244, 63, 94, 0.4)", color: "#f43f5e" }} onClick={handlePreviewDelete}>
+          <DeleteOutlined /> Delete
+        </button>
+      </div>
+    );
+  };
+
+  const previewFile = currentPreviewFile();
+  const previewFilepath = previewFile
+    ? path.join(currentDir, previewFile.Name)
+    : "";
 
   return (
     <>
@@ -422,17 +476,45 @@ function ImageManage() {
             />
           </Modal>
 
+          <Modal
+            open={tagModalVisible}
+            onCancel={() => setTagModalVisible(false)}
+            footer={null}
+            title={previewFile?.Name || "Edit Tags"}
+          >
+            {previewFile && (
+              <TagEditor
+                filepath={previewFilepath}
+                currentTags={previewFile.Tags || []}
+                onUpdated={(newTags) => handleTagsUpdated(previewFile.Name, newTags)}
+              />
+            )}
+          </Modal>
+
           {items.length === 0 ? (
             <div className="tech-empty">
               <Empty description={searching ? "No results found" : "Empty directory"} />
             </div>
           ) : (
-            <div className="tech-grid" style={{ gridTemplateColumns: imgGridCols }}>
-              {items}
-              {!searching && showCount < allItems.length && (
-                <div ref={sentinelRef} className="tech-sentinel"><Spin /></div>
-              )}
-            </div>
+            <Image.PreviewGroup
+              preview={{
+                visible: previewVisible,
+                current: previewIndex,
+                onChange: (current) => setPreviewIndex(current),
+                onVisibleChange: (visible) => {
+                  setPreviewVisible(visible);
+                  if (!visible) setPreviewIndex(0);
+                },
+                toolbarRender,
+              }}
+            >
+              <div className="tech-grid" style={{ gridTemplateColumns: imgGridCols }}>
+                {items}
+                {!searching && showCount < allItems.length && (
+                  <div ref={sentinelRef} className="tech-sentinel"><Spin /></div>
+                )}
+              </div>
+            </Image.PreviewGroup>
           )}
         </div>
       </div>

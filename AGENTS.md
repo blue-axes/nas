@@ -8,8 +8,7 @@
 
 ## Repository structure
 - `frontend/` – React + Vite SPA (Ant Design, React Router hash router)
-- `backend/` – Go Echo HTTP server (GORM, VFS, SQLite/Postgres/Mongo)
-- `scripts/` – SMB (Samba) and NFS setup scripts
+- `backend/` – Go Echo HTTP server (GORM, VFS, SQLite/Postgres/Mongo, WebDAV)
 
 ## Key commands
 **Frontend**
@@ -42,7 +41,7 @@
 - **Mobile responsive** — 768px/480px breakpoints, hamburger menu overlay, adaptive grids
 - **Tags + Search** — backend `GET /simple_upload/search?Keyword=&Tag=` + store `SearchFiles`
 - **Folder support** — `POST /simple_upload/mkdir/*` creates dir entries, delete cascades
-- **Document preview** — `GET /simple_upload/preview/*` uses libreoffice to convert Office docs to PDF, cached in `/tmp/nas_preview_cache/`
+- **WebDAV** — Go native network mount at `/webdav/`, serves `SimpleUploadRoot`
 
 ## API endpoints
 | Method | Path | Description |

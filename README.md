@@ -21,8 +21,9 @@
 - 转换结果缓存至 `/tmp/nas_preview_cache/`，避免重复转换
 
 ### 网络挂载
-- **SMB (Samba)** — `sudo bash scripts/setup_smb.sh` 一键配置共享
-- **NFS** — `sudo bash scripts/setup_nfs.sh` 一键配置导出
+- **WebDAV** — Go 原生实现，内嵌于后端，无需安装外部组件
+- 挂载地址：`http://<ip>:8088/webdav/`
+- Windows / macOS / Linux 均可直接挂载为网络驱动器
 - 支持 Linux / macOS / Windows 挂载访问
 
 ### 界面设计
@@ -52,8 +53,7 @@ cp -r ../frontend/dist ./static    # 将前端放入静态目录
 | 前端 | React 18, Vite 6, Ant Design 5, React Router 7 |
 | 后端 | Go, Echo, GORM (SQLite/Postgres) |
 | 存储 | VFS 抽象层（OS 文件系统） |
-| 文档转换 | LibreOffice headless |
-| 网络共享 | Samba / NFS |
+| 网络共享 | WebDAV (golang.org/x/net/webdav) |
 
 ## 项目结构
 
@@ -68,12 +68,13 @@ nas/
 │       └── reducers/     # Immer 状态管理
 ├── backend/
 │   ├── main.go
-│   ├── http/api/simple_upload/   # 文件上传/下载/搜索/预览 API
-│   ├── service/                  # 业务逻辑层
-│   ├── store/rdb/                # GORM 数据持久化
-│   └── types/                    # 领域类型定义
-├── scripts/              # SMB/NFS 配置脚本
-└── docs/                 # API 文档
+│   ├── http/
+│   │   ├── router.go         # WebDAV + API 路由注册
+│   │   └── api/simple_upload/ # 文件上传/下载/搜索/标签 API
+│   ├── service/               # 业务逻辑层
+│   ├── store/rdb/             # GORM 数据持久化
+│   └── types/                 # 领域类型定义
+├── docs/                      # API 文档
 ```
 
 ## API 概览

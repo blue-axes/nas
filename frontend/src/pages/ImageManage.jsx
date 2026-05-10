@@ -12,7 +12,6 @@ import {
   Input,
   Tag,
   Popover,
-  Space,
 } from "antd";
 import {
   UploadOutlined,

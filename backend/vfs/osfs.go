@@ -42,6 +42,10 @@ func (o *osFs) RemoveAll(path string) error {
 	return os.RemoveAll(o.getPath(path))
 }
 
+func (o *osFs) Rename(oldName, newName string) error {
+	return os.Rename(oldName, newName)
+}
+
 func (o *osFs) OpenFile(name string, flag int, perm iofs.FileMode) (File, error) {
 	return os.OpenFile(o.getPath(name), flag, perm)
 }

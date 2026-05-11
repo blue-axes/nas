@@ -2,7 +2,10 @@ package vfs
 
 import (
 	"errors"
+	"io"
+	"io/fs"
 	iofs "io/fs"
+	"os"
 	"path"
 	"strings"
 	"sync"
@@ -120,6 +123,32 @@ func (m *mountFs) RemoveAll(path string) error {
 	return fs.RemoveAll(dir)
 }
 
+func (m *mountFs) Rename(oldName, newName string) error {
+	oldFs, oldDir := m.findFs(oldName)
+	newFs, newDir := m.findFs(newName)
+	if oldFs != newFs { // 跨文件系统，则先复制再删除
+		oldStat, _ := oldFs.Stat(oldDir)
+		perm := fs.FileMode(0600)
+		if oldStat != nil {
+			perm = oldStat.Mode()
+		}
+		d, err := newFs.OpenFile(newDir, os.O_CREATE|os.O_RDWR|os.O_TRUNC, perm)
+		if err != nil {
+			return err
+		}
+		defer d.Close()
+		s, err := oldFs.OpenFile(oldDir, os.O_RDONLY, 0600)
+		if err != nil {
+			return err
+		}
+		defer s.Close()
+		_, err = io.Copy(d, s)
+		return err
+	}
+	// 不跨文件系统
+	return oldFs.Rename(oldDir, newDir)
+}
+
 func (m *mountFs) OpenFile(name string, flag int, perm iofs.FileMode) (File, error) {
 	fs, filename := m.findFs(name)
 	return fs.OpenFile(filename, flag, perm)
@@ -142,4 +171,19 @@ func (m *mountFs) ReadDir(dir string) ([]iofs.DirEntry, error) {
 
 func (m *mountFs) TempDir() string {
 	return m.rootfs.TempDir()
+}
+
+func (m *mountFs) Chroot(dir string) (MountFs, error) {
+	dir = path.Clean(dir)
+	if !path.IsAbs(dir) {
+		return nil, ErrAbsolutePathOnly
+	}
+	info, err := m.Stat(dir)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, errors.New("not a directory")
+	}
+	return &chrootFs{parent: m, rootDir: dir}, nil
 }

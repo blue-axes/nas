@@ -10,6 +10,7 @@ type (
 		Stat(name string) (fs.FileInfo, error)
 		Remove(name string) error
 		RemoveAll(path string) error
+		Rename(oldName, newName string) error
 
 		OpenFile(name string, flag int, perm fs.FileMode) (File, error)
 		Mkdir(name string, perm fs.FileMode) error
@@ -24,10 +25,13 @@ type (
 		io.Seeker
 		Truncate(size int64) error
 		Name() string
+		Readdir(count int) ([]fs.FileInfo, error)
+		Stat() (fs.FileInfo, error)
 	}
 	MountFs interface {
 		Mount(dir string, fs VFS) error
 		Umount(dir string) error
+		Chroot(dir string) (MountFs, error)
 		VFS
 	}
 )

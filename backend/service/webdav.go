@@ -32,6 +32,7 @@ type (
 		fs      *webDavFileSystem
 		name    string
 		isWrite bool
+		written int64
 	}
 )
 
@@ -49,8 +50,9 @@ func (fs *webDavFileSystem) Mkdir(ctx context.Context, name string, perm os.File
 		return err
 	}
 	dbCtx := pkgCtx.New(pkgCtx.WithCtx(ctx))
-	if err := fs.svc.store.RDB().CreateDir(dbCtx, name); err != nil {
-		log.WithError(err).Warnf("webdav mkdir: failed to create db record for %s", name)
+	normalized := normalizeName(name)
+	if err := fs.svc.store.RDB().CreateDir(dbCtx, normalized); err != nil {
+		log.WithError(err).Warnf("webdav mkdir: failed to create db record for %s", normalized)
 	}
 	return nil
 }
@@ -72,12 +74,18 @@ func (fs *webDavFileSystem) OpenFile(ctx context.Context, name string, flag int,
 	}, nil
 }
 
+func (f *trackedFile) Write(p []byte) (n int, err error) {
+	n, err = f.File.Write(p)
+	f.written += int64(n)
+	return
+}
+
 func (f *trackedFile) Close() error {
 	err := f.File.Close()
 	if err != nil {
 		log.WithError(err).Warnf("webdav close file error: %s", err)
 	}
-	if f.isWrite {
+	if f.isWrite && f.written > 0 {
 		f.syncToDB()
 	}
 	return err
@@ -89,17 +97,18 @@ func (f *trackedFile) syncToDB() {
 		log.WithError(err).Warnf("webdav stat after write failed: %s", f.name)
 		return
 	}
-	realPath := path.Join(f.fs.svc.cfg.Nas.SimpleUploadRoot, f.name)
+	normalized := normalizeName(f.name)
+	realPath := path.Join(f.fs.svc.cfg.Nas.SimpleUploadRoot, normalized)
 	fileRecord := &types.File{
-		Name:  f.name,
-		Ext:   path.Ext(f.name),
+		Name:  normalized,
+		Ext:   path.Ext(normalized),
 		Path:  realPath,
 		Size:  uint64(info.Size()),
 		IsDir: info.IsDir(),
 	}
 	dbCtx := pkgCtx.New()
-	if err := f.fs.svc.store.RDB().UpsertFileByName(dbCtx, f.name, fileRecord); err != nil {
-		log.WithError(err).Warnf("webdav upsert db record failed: %s", f.name)
+	if err := f.fs.svc.store.RDB().UpsertFileByName(dbCtx, normalized, fileRecord); err != nil {
+		log.WithError(err).Warnf("webdav upsert db record failed: %s", normalized)
 	}
 }
 
@@ -110,13 +119,14 @@ func (fs *webDavFileSystem) RemoveAll(ctx context.Context, name string) error {
 		return err
 	}
 	dbCtx := pkgCtx.New(pkgCtx.WithCtx(ctx))
+	normalized := normalizeName(name)
 	if statErr == nil && info.IsDir() {
-		if err := fs.svc.store.RDB().DeleteDir(dbCtx, name); err != nil {
-			log.WithError(err).Warnf("webdav delete dir db record failed: %s", name)
+		if err := fs.svc.store.RDB().DeleteDir(dbCtx, normalized); err != nil {
+			log.WithError(err).Warnf("webdav delete dir db record failed: %s", normalized)
 		}
 	} else {
-		if err := fs.svc.store.RDB().DeleteByName(dbCtx, name); err != nil {
-			log.WithError(err).Warnf("webdav delete file db record failed: %s", name)
+		if err := fs.svc.store.RDB().DeleteByName(dbCtx, normalized); err != nil {
+			log.WithError(err).Warnf("webdav delete file db record failed: %s", normalized)
 		}
 	}
 	return nil
@@ -129,14 +139,16 @@ func (fs *webDavFileSystem) Rename(ctx context.Context, oldName, newName string)
 		return err
 	}
 	dbCtx := pkgCtx.New(pkgCtx.WithCtx(ctx))
+	oldNorm := normalizeName(oldName)
+	newNorm := normalizeName(newName)
 	if statErr == nil && info.IsDir() {
-		if err := fs.svc.store.RDB().DeleteDir(dbCtx, oldName); err != nil {
-			log.WithError(err).Warnf("webdav rename: delete old dir db record failed: %s", oldName)
+		if err := fs.svc.store.RDB().DeleteDir(dbCtx, oldNorm); err != nil {
+			log.WithError(err).Warnf("webdav rename: delete old dir db record failed: %s", oldNorm)
 		}
-		fs.syncDirToDB(dbCtx, newName)
+		fs.syncDirToDB(dbCtx, newNorm)
 	} else {
-		if err := fs.svc.store.RDB().RenameFileByName(dbCtx, oldName, newName); err != nil {
-			log.WithError(err).Warnf("webdav rename file db record failed: %s -> %s", oldName, newName)
+		if err := fs.svc.store.RDB().RenameFileByName(dbCtx, oldNorm, newNorm); err != nil {
+			log.WithError(err).Warnf("webdav rename file db record failed: %s -> %s", oldNorm, newNorm)
 		}
 	}
 	return nil
@@ -146,8 +158,15 @@ func (fs *webDavFileSystem) Stat(ctx context.Context, name string) (os.FileInfo,
 	return fs.fs.Stat(name)
 }
 
+func normalizeName(name string) string {
+	return strings.TrimLeft(name, "/")
+}
+
 func (fs *webDavFileSystem) syncDirToDB(ctx *pkgCtx.Context, dirPath string) {
-	dirPath = strings.TrimRight(dirPath, "/")
+	dirPath = normalizeName(strings.TrimRight(dirPath, "/"))
+	if dirPath == "" {
+		dirPath = "."
+	}
 	if err := fs.svc.store.RDB().CreateDir(ctx, dirPath); err != nil {
 		log.WithError(err).Warnf("webdav sync dir: create dir db record failed: %s", dirPath)
 	}

@@ -183,3 +183,20 @@ func (s *txStore) DeleteDir(ctx *context.Context, dirPath string) error {
 	dirPath = strings.TrimRight(dirPath, "/")
 	return s.db.Where("name = ? OR name LIKE ?", dirPath, dirPath+"/%").Delete(&file{}).Error
 }
+
+func (s *txStore) RenameFileByName(ctx *context.Context, oldName, newName string) error {
+	return s.db.Model(&file{}).Where("name = ?", oldName).Updates(map[string]interface{}{
+		"name": newName,
+		"ext":  path.Ext(newName),
+	}).Error
+}
+
+func (s *txStore) UpsertFileByName(ctx *context.Context, name string, e *types.File) error {
+	existing, err := s.GetFileByName(ctx, name)
+	if err == nil {
+		return s.UpdateFileByID(ctx, existing.ID, e)
+	}
+	mdl := file{}
+	mdl.FromEntity(*e)
+	return s.db.Create(&mdl).Error
+}

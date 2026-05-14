@@ -77,6 +77,6 @@ func (s *Store) Transaction(fn TransactionFn) (err error) {
 }
 
 func (s *Store) Migrate() (err error) {
-	err = s.db.AutoMigrate(&file{})
+	err = s.db.AutoMigrate(&file{}, &user{})
 	return err
 }

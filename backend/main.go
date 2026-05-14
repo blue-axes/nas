@@ -67,6 +67,14 @@ func main() {
 		os.Exit(1)
 		return
 	}
+
+	err = svc.InitAdminUser()
+	if err != nil {
+		log.Errorf("init admin user err:%s", err.Error())
+		os.Exit(1)
+		return
+	}
+
 	// 初始化server
 	srv, err := http.New(cfg.Http, svc)
 	if err != nil {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Outlet } from "react-router";
 import { useNavigate } from "react-router";
-import { Button, ConfigProvider, Layout, Menu, theme } from "antd";
+import { Button, ConfigProvider, Layout, Menu, theme, Modal, Form, Input, message, Space, Tag } from "antd";
 import {
   DeliveredProcedureOutlined,
   PictureOutlined,
@@ -10,41 +10,17 @@ import {
   CloudServerOutlined,
   MenuOutlined,
   CloseOutlined,
+  SettingOutlined,
+  KeyOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import zh_CN from "antd/locale/zh_CN";
 import "antd/dist/reset.css";
+import { GetCurrentUser, ChangePassword } from "./apis/User.jsx";
 
 const Sider = Layout.Sider;
 const Header = Layout.Header;
 const Content = Layout.Content;
-
-const menuConfig = [
-  {
-    label: "文件管理",
-    title: "文件管理",
-    icon: <DeliveredProcedureOutlined />,
-    children: [
-      {
-        label: "图片文件",
-        title: "图片文件",
-        icon: <PictureOutlined />,
-        link: "/image",
-      },
-      {
-        label: "视频文件",
-        title: "视频文件",
-        icon: <PlaySquareOutlined />,
-        link: "/video",
-      },
-      {
-        label: "普通文件",
-        title: "普通文件",
-        icon: <FileOutlined />,
-        link: "/file",
-      },
-    ],
-  },
-];
 
 function getItem(idx, keyPrefix, item) {
   if (!(item instanceof Object)) {
@@ -83,7 +59,49 @@ function getItem(idx, keyPrefix, item) {
   ];
 }
 
-function initMenu() {
+function buildMenuConfig(user) {
+  const fileMgmt = {
+    label: "文件管理",
+    title: "文件管理",
+    icon: <DeliveredProcedureOutlined />,
+    children: [
+      {
+        label: "图片文件",
+        title: "图片文件",
+        icon: <PictureOutlined />,
+        link: "/image",
+      },
+      {
+        label: "视频文件",
+        title: "视频文件",
+        icon: <PlaySquareOutlined />,
+        link: "/video",
+      },
+      {
+        label: "普通文件",
+        title: "普通文件",
+        icon: <FileOutlined />,
+        link: "/file",
+      },
+    ],
+  };
+
+  const config = [fileMgmt];
+
+  if (user && user.IsAdmin) {
+    config.push({
+      label: "用户管理",
+      title: "用户管理",
+      icon: <SettingOutlined />,
+      link: "/users",
+    });
+  }
+
+  return config;
+}
+
+function initMenu(user) {
+  const menuConfig = buildMenuConfig(user);
   let keyLink = {};
   let res = menuConfig.map((item, idx) => {
     let [tmpItem, tmpKeyLink] = getItem(idx, "", item);
@@ -98,12 +116,16 @@ function initMenu() {
 }
 
 function App() {
-  const [items, keyLink] = initMenu();
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [openKeys, setOpenKeys] = useState(["key0"]);
   const [selectedKeys, setSelectedKeys] = useState(["key0key0"]);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordForm] = Form.useForm();
+
+  const [items, keyLink] = initMenu(user);
 
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768);
@@ -115,6 +137,16 @@ function App() {
     return () => window.removeEventListener("resize", checkMobile);
   }, [checkMobile]);
 
+  useEffect(() => {
+    GetCurrentUser()
+      .then((data) => {
+        if (data && data.Username) {
+          setUser(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleMenuClick = ({ key }) => {
     const to = keyLink[key];
     if (to) {
@@ -123,6 +155,19 @@ function App() {
       if (isMobile) {
         setSiderCollapsed(true);
       }
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      const values = await passwordForm.validateFields();
+      await ChangePassword(user.Username, values.CurrentPassword, values.NewPassword);
+      message.success("Password changed successfully");
+      setPasswordModalOpen(false);
+      passwordForm.resetFields();
+    } catch (e) {
+      if (e?.errorFields) return;
+      message.error(e.message);
     }
   };
 
@@ -222,6 +267,7 @@ function App() {
     padding: "0 24px",
     display: "flex",
     alignItems: "center",
+    justifyContent: "space-between",
     height: 56,
     flexShrink: 0,
   };
@@ -243,6 +289,124 @@ function App() {
     alignItems: "center",
     justifyContent: "center",
   };
+
+  const renderSider = () => (
+    <>
+      <div
+        style={{
+          padding: "12px 0",
+          color: "#64748b",
+          fontSize: 11,
+          textAlign: "center",
+          letterSpacing: 2,
+          textTransform: "uppercase",
+        }}
+      >
+        Navigation
+      </div>
+      <Menu
+        mode="inline"
+        theme="dark"
+        triggerSubMenuAction="click"
+        items={items}
+        onClick={handleMenuClick}
+        openKeys={openKeys}
+        selectedKeys={selectedKeys}
+        onOpenChange={setOpenKeys}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 20,
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          color: "#334155",
+          fontSize: 11,
+        }}
+      >
+        NAS System
+      </div>
+    </>
+  );
+
+  const renderMobileOverlay = () => (
+    <>
+      <div
+        onClick={() => setSiderCollapsed(true)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 99,
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 200,
+          background: "#0b1020",
+          borderRight: "1px solid var(--border-glow)",
+          zIndex: 100,
+          display: "flex",
+          flexDirection: "column",
+          paddingTop: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0 16px 12px",
+          }}
+        >
+          <span
+            style={{
+              color: "#64748b",
+              fontSize: 11,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+            }}
+          >
+            Navigation
+          </span>
+          <button
+            style={menuBtnStyle}
+            onClick={() => setSiderCollapsed(true)}
+            aria-label="Close menu"
+          >
+            <CloseOutlined />
+          </button>
+        </div>
+        <div style={{ flex: 1, overflow: "auto" }}>
+          <Menu
+            mode="inline"
+            theme="dark"
+            triggerSubMenuAction="click"
+            items={items}
+            onClick={handleMenuClick}
+            openKeys={openKeys}
+            selectedKeys={selectedKeys}
+            onOpenChange={setOpenKeys}
+          />
+          </div>
+        <div
+          style={{
+            padding: "12px 0 20px",
+            textAlign: "center",
+            color: "#334155",
+            fontSize: 11,
+          }}
+        >
+          NAS System
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -274,132 +438,40 @@ function App() {
               />
               <span className="tech-logo">NAS</span>
             </div>
-            <span
-              style={{
-                color: "#64748b",
-                fontSize: isMobile ? 11 : 13,
-                letterSpacing: 1,
-              }}
-            >
-              v1.0
-            </span>
+            {user ? (
+              <Space size="small">
+                <Tag color="cyan" icon={<UserOutlined />}>
+                  {user.Username}
+                </Tag>
+                <Button
+                  icon={<KeyOutlined />}
+                  size="small"
+                  onClick={() => {
+                    passwordForm.resetFields();
+                    setPasswordModalOpen(true);
+                  }}
+                >
+                  修改密码
+                </Button>
+              </Space>
+            ) : (
+              <span
+                style={{
+                  color: "#64748b",
+                  fontSize: isMobile ? 11 : 13,
+                  letterSpacing: 1,
+                }}
+              >
+                v1.0
+              </span>
+            )}
           </Header>
           <Layout>
             {isMobile ? (
-              siderCollapsed ? null : (
-                <>
-                  <div
-                    onClick={() => setSiderCollapsed(true)}
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      background: "rgba(0,0,0,0.5)",
-                      zIndex: 99,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "fixed",
-                      top: 0,
-                      left: 0,
-                      bottom: 0,
-                      width: 200,
-                      background: "#0b1020",
-                      borderRight: "1px solid var(--border-glow)",
-                      zIndex: 100,
-                      display: "flex",
-                      flexDirection: "column",
-                      paddingTop: 12,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0 16px 12px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#64748b",
-                          fontSize: 11,
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Navigation
-                      </span>
-                      <button
-                        style={menuBtnStyle}
-                        onClick={() => setSiderCollapsed(true)}
-                        aria-label="Close menu"
-                      >
-                        <CloseOutlined />
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, overflow: "auto" }}>
-                      <Menu
-                        mode="inline"
-                        theme="dark"
-                        triggerSubMenuAction="click"
-                        items={items}
-                        onClick={handleMenuClick}
-                        openKeys={openKeys}
-                        selectedKeys={selectedKeys}
-                        onOpenChange={setOpenKeys}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        padding: "12px 0 20px",
-                        textAlign: "center",
-                        color: "#334155",
-                        fontSize: 11,
-                      }}
-                    >
-                      NAS System
-                    </div>
-                  </div>
-                </>
-              )
+              siderCollapsed ? null : renderMobileOverlay()
             ) : (
               <Sider width={200} style={siderStyle}>
-                <div
-                  style={{
-                    padding: "12px 0",
-                    color: "#64748b",
-                    fontSize: 11,
-                    textAlign: "center",
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Navigation
-                </div>
-                <Menu
-                  mode="inline"
-                  theme="dark"
-                  triggerSubMenuAction="click"
-                  items={items}
-                  onClick={handleMenuClick}
-                  openKeys={openKeys}
-                  selectedKeys={selectedKeys}
-                  onOpenChange={setOpenKeys}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    textAlign: "center",
-                    color: "#334155",
-                    fontSize: 11,
-                  }}
-                >
-                  NAS System
-                </div>
+                {renderSider()}
               </Sider>
             )}
             <Content
@@ -413,6 +485,53 @@ function App() {
           </Layout>
         </Layout>
       </ConfigProvider>
+
+      <Modal
+        title="修改密码"
+        open={passwordModalOpen}
+        onOk={handleChangePassword}
+        onCancel={() => {
+          setPasswordModalOpen(false);
+          passwordForm.resetFields();
+        }}
+        okText="确认"
+        cancelText="取消"
+      >
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item
+            name="CurrentPassword"
+            label="当前密码"
+            rules={[{ required: true, message: "请输入当前密码" }]}
+          >
+            <Input.Password placeholder="当前密码" />
+          </Form.Item>
+          <Form.Item
+            name="NewPassword"
+            label="新密码"
+            rules={[{ required: true, message: "请输入新密码" }]}
+          >
+            <Input.Password placeholder="新密码" />
+          </Form.Item>
+          <Form.Item
+            name="ConfirmPassword"
+            label="确认新密码"
+            dependencies={["NewPassword"]}
+            rules={[
+              { required: true, message: "请再次输入新密码" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("NewPassword") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("两次输入的密码不一致"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="确认新密码" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

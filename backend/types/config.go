@@ -2,9 +2,15 @@ package types
 
 type (
 	HttpConfig struct {
-		ListenAddress string `json:"ListenAddress" yaml:"ListenAddress"`
-		ListenPort    uint16 `json:"ListenPort" yaml:"ListenPort"`
-		StaticRoot    string `json:"StaticRoot" yaml:"StaticRoot"`
+		ListenAddress string     `json:"ListenAddress" yaml:"ListenAddress"`
+		ListenPort    uint16     `json:"ListenPort" yaml:"ListenPort"`
+		StaticRoot    string     `json:"StaticRoot" yaml:"StaticRoot"`
+		CertFile      string     `json:"CertFile" yaml:"CertFile"`
+		KeyFile       string     `json:"KeyFile" yaml:"KeyFile"`
+		Auth          AuthConfig `json:"Auth" yaml:"Auth"`
+	}
+	AuthConfig struct {
+		Enabled bool `json:"Enabled" yaml:"Enabled"`
 	}
 	DatabaseConfig struct {
 		Rdb   *RdbConfig   `json:"Rdb" yaml:"Rdb"`
@@ -85,6 +91,10 @@ func (cfg *HttpConfig) SetDefault() {
 	if cfg.StaticRoot == "" {
 		cfg.StaticRoot = "./"
 	}
+	cfg.Auth.SetDefault()
+}
+
+func (cfg *AuthConfig) SetDefault() {
 }
 
 func (c *RdbConfig) SetDefault() {

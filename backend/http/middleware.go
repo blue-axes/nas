@@ -2,14 +2,18 @@ package http
 
 import (
 	"fmt"
+	"net/http"
+	"reflect"
+	"strings"
+
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
+	"github.com/blue-axes/tmpl/types"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"reflect"
-	"strings"
+	echomw "github.com/labstack/echo/v4/middleware"
 )
 
 type (
@@ -17,13 +21,17 @@ type (
 	}
 )
 
+func GetUserInfo(c echo.Context) *types.UserInfo {
+	u, _ := c.Get(constants.CtxKeyUser).(*types.UserInfo)
+	return u
+}
+
 func (Binder) Bind(i interface{}, c echo.Context) error {
 	b := echo.DefaultBinder{}
 	err := b.Bind(i, c)
 	if err != nil {
 		return err
 	}
-	// validate
 	val := reflect.ValueOf(i)
 	if val.Kind() == reflect.Ptr {
 		if val.IsNil() {
@@ -64,6 +72,47 @@ func Pre(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		c.Set(constants.CtxKeyContext, ctx)
 
+		return next(c)
+	}
+}
+
+func BasicAuth(validator func(username, password string) (*types.UserInfo, bool)) echo.MiddlewareFunc {
+	return echomw.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+		userInfo, ok := validator(username, password)
+		if ok {
+			c.Set(constants.CtxKeyUser, userInfo)
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func RequireRead(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		u := GetUserInfo(c)
+		if u != nil && !u.CanRead {
+			return echo.NewHTTPError(http.StatusForbidden, "read permission required")
+		}
+		return next(c)
+	}
+}
+
+func RequireWrite(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		u := GetUserInfo(c)
+		if u != nil && !u.CanWrite {
+			return echo.NewHTTPError(http.StatusForbidden, "write permission required")
+		}
+		return next(c)
+	}
+}
+
+func RequireAdmin(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		u := GetUserInfo(c)
+		if u != nil && !u.IsAdmin {
+			return echo.NewHTTPError(http.StatusForbidden, "admin permission required")
+		}
 		return next(c)
 	}
 }

@@ -5,27 +5,18 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func InitRouter(svc *service.Service, e *echo.Group) {
+func InitRouter(svc *service.Service, e *echo.Group, writeMw ...echo.MiddlewareFunc) {
 	handler := New(svc)
 
-	// 获取元数据
 	e.HEAD("/object/*", handler.Schema)
-	// 文件下载
 	e.GET("/object/*", handler.Download)
-	// 文件上传
-	e.POST("/object/*", handler.Upload)
-	// 文件删除
-	e.DELETE("/object/*", handler.Delete)
-	// 更新文件标签
-	e.PATCH("/object/*", handler.UpdateTags)
+	e.POST("/object/*", handler.Upload, writeMw...)
+	e.DELETE("/object/*", handler.Delete, writeMw...)
+	e.PATCH("/object/*", handler.UpdateTags, writeMw...)
 
-	// 文件列表
 	e.GET("/objects/*", handler.ReadDir)
-	// 文件批量上传
-	e.POST("/objects/", handler.MultiUpload)
+	e.POST("/objects/", handler.MultiUpload, writeMw...)
 
-	// 搜索文件
 	e.GET("/search", handler.Search)
-	// 创建目录
-	e.POST("/mkdir/*", handler.Mkdir)
+	e.POST("/mkdir/*", handler.Mkdir, writeMw...)
 }

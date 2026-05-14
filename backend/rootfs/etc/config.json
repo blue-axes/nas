@@ -5,7 +5,12 @@
     "Http": {
         "ListenAddress": "0.0.0.0",
         "ListenPort": 8088,
-        "StaticRoot": "./static"
+        "CertFile": "",
+        "KeyFile": "",
+        "StaticRoot": "./static",
+        "Auth": {
+            "Enabled": true
+        }
     },
     "Database": {
         "RDS": {

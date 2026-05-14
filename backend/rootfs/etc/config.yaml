@@ -1,15 +1,20 @@
 Log:
-  Level: "debug"
+    Level: "debug"
 Http:
-  ListenAddress: "0.0.0.0"
-  ListenPort: 8088
-  StaticRoot: "../frontend/dist/"
+    ListenAddress: "0.0.0.0"
+    ListenPort: 8088
+    CertFile: "rootfs/etc/server.crt"
+    KeyFile: "rootfs/etc/server.key"
+    StaticRoot: "../frontend/dist/"
+    Auth:
+        Enabled: true
+
 Database:
-  Rdb:
-    Debug: true
-    DSN: "nas.db?mode=rwc"
-    AutoMigrateLevel: "auto"
-    MaxConnCount: 10
+    Rdb:
+        Debug: true
+        DSN: "nas.db?mode=rwc"
+        AutoMigrateLevel: "auto"
+        MaxConnCount: 10
 #  Mongo:
 #    Debug: true
 #    Address: "192.168.0.231"
@@ -20,5 +25,5 @@ Database:
 #    AutoMigrateLevel: "auto"
 #    MaxConnCount: 10
 Nas:
-  SimpleUploadRoot: "/data"
-  RealFilenamePolicy: "origin"
+    SimpleUploadRoot: "/data"
+    RealFilenamePolicy: "origin"

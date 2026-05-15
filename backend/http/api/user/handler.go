@@ -1,6 +1,8 @@
 package user
 
 import (
+	"net/http"
+
 	api "github.com/blue-axes/tmpl/http/api"
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/service"
@@ -90,4 +92,61 @@ func (h UserHandler) ChangePassword(c echo.Context) error {
 	}
 	err := h.svc.ChangePassword(username, req.CurrentPassword, req.NewPassword)
 	return h.RespJson(c, nil, err)
+}
+
+func (h UserHandler) Login(c echo.Context) error {
+	var req struct {
+		Username string `json:"Username"`
+		Password string `json:"Password"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+
+	info, ok := h.svc.ValidateUser(req.Username, req.Password)
+	if !ok {
+		return h.RespJson(c, nil, echo.NewHTTPError(http.StatusUnauthorized, "invalid username or password"))
+	}
+
+	session := h.svc.Session()
+	token, maxAge := session.Create(&types.UserInfo{
+		Username: info.Username,
+		CanRead:  info.CanRead,
+		CanWrite: info.CanWrite,
+		IsAdmin:  info.IsAdmin,
+	})
+
+	cookieName := h.svc.Config().Http.Auth.CookieName
+	c.SetCookie(&http.Cookie{
+		Name:     cookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(maxAge.Seconds()),
+	})
+
+	return h.RespJson(c, map[string]interface{}{
+		"Username": info.Username,
+		"CanRead":  info.CanRead,
+		"CanWrite": info.CanWrite,
+		"IsAdmin":  info.IsAdmin,
+	}, nil)
+}
+
+func (h UserHandler) Logout(c echo.Context) error {
+	cookieName := h.svc.Config().Http.Auth.CookieName
+	if cookie, err := c.Cookie(cookieName); err == nil {
+		h.svc.Session().Delete(cookie.Value)
+	}
+
+	c.SetCookie(&http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	})
+
+	return h.RespJson(c, nil, nil)
 }

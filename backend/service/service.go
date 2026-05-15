@@ -8,9 +8,10 @@ import (
 
 type (
 	Service struct {
-		cfg   *types.Config
-		store *store.Store
-		vfs   vfs.MountFs
+		cfg     *types.Config
+		store   *store.Store
+		vfs     vfs.MountFs
+		session *SessionStore
 	}
 	Option func(svc *Service) error
 )
@@ -47,4 +48,15 @@ func (svc *Service) Config() *types.Config {
 		panic("initial service WithConfig Option nil")
 	}
 	return svc.cfg
+}
+
+func (svc *Service) Session() *SessionStore {
+	return svc.session
+}
+
+func (svc *Service) InitSession() {
+	cfg := svc.Config()
+	if cfg.Http.Auth.Enabled {
+		svc.session = NewSessionStore(cfg.Http.Auth.SessionExpireHours)
+	}
 }

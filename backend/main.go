@@ -75,6 +75,8 @@ func main() {
 		return
 	}
 
+	svc.InitSession()
+
 	// 初始化server
 	srv, err := http.New(cfg.Http, svc)
 	if err != nil {

@@ -16,7 +16,8 @@ import {
 } from "@ant-design/icons";
 import zh_CN from "antd/locale/zh_CN";
 import "antd/dist/reset.css";
-import { GetCurrentUser, ChangePassword } from "./apis/User.jsx";
+import { Login, Logout, GetCurrentUser, ChangePassword } from "./apis/User.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 
 const Sider = Layout.Sider;
 const Header = Layout.Header;
@@ -147,6 +148,12 @@ function App() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const handler = () => setUser(null);
+    window.addEventListener("auth:unauthorized", handler);
+    return () => window.removeEventListener("auth:unauthorized", handler);
+  }, []);
+
   const handleMenuClick = ({ key }) => {
     const to = keyLink[key];
     if (to) {
@@ -169,6 +176,16 @@ function App() {
       if (e?.errorFields) return;
       message.error(e.message);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await Logout();
+    } catch {
+      // ignore
+    }
+    setUser(null);
+    navigate("/");
   };
 
   const themeConfig = {
@@ -411,6 +428,9 @@ function App() {
   return (
     <>
       <ConfigProvider locale={zh_CN} componentSize="large" theme={themeConfig}>
+        {!user ? (
+          <LoginPage onLoginSuccess={(userInfo) => setUser(userInfo)} />
+        ) : (
         <Layout style={{ width: "100vw", height: "100vh" }}>
           <Header style={isMobile ? mobileHeaderStyle : headerStyle}>
             <div
@@ -453,6 +473,13 @@ function App() {
                 >
                   修改密码
                 </Button>
+                <Button
+                  size="small"
+                  danger
+                  onClick={handleLogout}
+                >
+                  退出登录
+                </Button>
               </Space>
             ) : (
               <span
@@ -484,6 +511,7 @@ function App() {
             </Content>
           </Layout>
         </Layout>
+        )}
       </ConfigProvider>
 
       <Modal

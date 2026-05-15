@@ -52,18 +52,7 @@ func (s *Server) Start() error {
 		AllowMethods: []string{"*"},
 	}))
 	if s.cfg.Auth.Enabled {
-		e.Use(BasicAuth(func(username, password string) (*types.UserInfo, bool) {
-			info, ok := s.svc.ValidateUser(username, password)
-			if !ok {
-				return nil, false
-			}
-			return &types.UserInfo{
-				Username: info.Username,
-				CanRead:  info.CanRead,
-				CanWrite: info.CanWrite,
-				IsAdmin:  info.IsAdmin,
-			}, true
-		}))
+		e.Use(Auth(s.svc))
 	}
 	e.Pre(Pre)
 	e.HTTPErrorHandler = api.ErrorHandler

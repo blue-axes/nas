@@ -1,5 +1,19 @@
 import ApiRequest from "./Api.jsx";
 
+export function Login(username, password) {
+  return ApiRequest("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ Username: username, Password: password }),
+  });
+}
+
+export function Logout() {
+  return ApiRequest("/api/logout", {
+    method: "POST",
+  });
+}
+
 export function GetCurrentUser() {
   return ApiRequest("/api/users/me");
 }

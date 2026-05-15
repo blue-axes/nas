@@ -10,7 +10,9 @@ type (
 		Auth          AuthConfig `json:"Auth" yaml:"Auth"`
 	}
 	AuthConfig struct {
-		Enabled bool `json:"Enabled" yaml:"Enabled"`
+		Enabled            bool `json:"Enabled" yaml:"Enabled"`
+		CookieName         string `json:"CookieName" yaml:"CookieName"`
+		SessionExpireHours int    `json:"SessionExpireHours" yaml:"SessionExpireHours"`
 	}
 	DatabaseConfig struct {
 		Rdb   *RdbConfig   `json:"Rdb" yaml:"Rdb"`
@@ -95,6 +97,12 @@ func (cfg *HttpConfig) SetDefault() {
 }
 
 func (cfg *AuthConfig) SetDefault() {
+	if cfg.CookieName == "" {
+		cfg.CookieName = "nas_session"
+	}
+	if cfg.SessionExpireHours <= 0 {
+		cfg.SessionExpireHours = 24
+	}
 }
 
 func (c *RdbConfig) SetDefault() {

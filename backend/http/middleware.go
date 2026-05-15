@@ -4,16 +4,18 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
+	"github.com/blue-axes/tmpl/pkg/utils"
+	"github.com/blue-axes/tmpl/service"
 	"github.com/blue-axes/tmpl/types"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	echomw "github.com/labstack/echo/v4/middleware"
 )
 
 type (
@@ -76,15 +78,51 @@ func Pre(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func BasicAuth(validator func(username, password string) (*types.UserInfo, bool)) echo.MiddlewareFunc {
-	return echomw.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		userInfo, ok := validator(username, password)
-		if ok {
-			c.Set(constants.CtxKeyUser, userInfo)
-			return true, nil
+func Auth(svc *service.Service) echo.MiddlewareFunc {
+	cookieName := svc.Config().Http.Auth.CookieName
+	skipUrl := []string{
+		"^/api/login$",
+		"^/index[^/]+",
+		"^/$",
+	}
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			path := c.Request().URL.Path
+			fmt.Printf("-----------------%+v\n", path)
+
+			if utils.StrInArray(path, skipUrl, func(src, dst string) bool {
+				r := regexp.MustCompile(dst)
+				return r.MatchString(src)
+			}) {
+				return next(c)
+			}
+
+			if cookie, err := c.Cookie(cookieName); err == nil && cookie.Value != "" {
+				if userInfo := svc.Session().Validate(cookie.Value); userInfo != nil {
+					c.Set(constants.CtxKeyUser, userInfo)
+					return next(c)
+				}
+			}
+
+			if strings.HasPrefix(path, "/webdav") {
+				if username, password, ok := c.Request().BasicAuth(); ok {
+					if info, ok := svc.ValidateUser(username, password); ok {
+						ui := &types.UserInfo{
+							Username: info.Username,
+							CanRead:  info.CanRead,
+							CanWrite: info.CanWrite,
+							IsAdmin:  info.IsAdmin,
+						}
+						c.Set(constants.CtxKeyUser, ui)
+						return next(c)
+					}
+				}
+				c.Response().Header().Set("WWW-Authenticate", `Basic realm="NAS"`)
+			}
+
+			return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 		}
-		return false, nil
-	})
+	}
 }
 
 func RequireRead(next echo.HandlerFunc) echo.HandlerFunc {

@@ -1,6 +1,9 @@
 package http
 
 import (
+	// "os"
+	// "strings"
+
 	"github.com/blue-axes/tmpl/http/api/example"
 	"github.com/blue-axes/tmpl/http/api/simple_upload"
 	"github.com/blue-axes/tmpl/http/api/user"
@@ -11,7 +14,6 @@ import (
 
 func initRouter(svc *service.Service, e *echo.Echo) {
 	example.InitRouter(svc, e.Group("/example"))
-	e.Static("/static", svc.Config().Http.StaticRoot)
 
 	su := e.Group("/simple_upload")
 	su.Use(RequireRead)
@@ -29,4 +31,10 @@ func initRouter(svc *service.Service, e *echo.Echo) {
 
 	pwGroup := e.Group("/api/users")
 	pwGroup.PUT("/:username/password", userHandler.ChangePassword)
+
+	e.POST("/api/login", userHandler.Login)
+	e.POST("/api/logout", userHandler.Logout)
+
+	staticRoot := svc.Config().Http.StaticRoot
+	e.Static("/", staticRoot)
 }

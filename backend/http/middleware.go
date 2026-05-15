@@ -81,7 +81,7 @@ func Pre(next echo.HandlerFunc) echo.HandlerFunc {
 func Auth(svc *service.Service) echo.MiddlewareFunc {
 	cookieName := svc.Config().Http.Auth.CookieName
 	skipUrl := []string{
-		"^/api/login$",
+		"^/api/users/login$",
 		"^/index[^/]+",
 		"^/$",
 	}
@@ -125,32 +125,69 @@ func Auth(svc *service.Service) echo.MiddlewareFunc {
 	}
 }
 
-func RequireRead(next echo.HandlerFunc) echo.HandlerFunc {
+func FilePermissionCheck(next echo.HandlerFunc) echo.HandlerFunc {
+	readMethod := []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodOptions,
+		echo.PROPFIND,
+		echo.REPORT,
+	}
+	writeMethod := []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodTrace,
+		"MKCOL",
+		"COPY",
+		"MOVE",
+		"LOCK",
+		"UNLOCK",
+		"PROPPATCH",
+	}
 	return func(c echo.Context) error {
+		method := c.Request().Method
 		u := GetUserInfo(c)
-		if u != nil && !u.CanRead {
-			return echo.NewHTTPError(http.StatusForbidden, "read permission required")
+		if u == nil {
+			return echo.NewHTTPError(http.StatusForbidden, "require login")
+		}
+		if utils.StrInArray(method, readMethod, nil) { // 读操作
+			if !u.CanRead && !u.IsAdmin {
+				return echo.NewHTTPError(http.StatusForbidden, "read permission required")
+			}
+		} else if utils.StrInArray(method, writeMethod, nil) { // 写操作
+			if !u.CanWrite && !u.IsAdmin {
+				return echo.NewHTTPError(http.StatusForbidden, "write permission required")
+			}
+		} else { // 未知操作
+			if !u.IsAdmin { // 只有admin允许
+				return echo.NewHTTPError(http.StatusForbidden, "unknown permission:"+method)
+			}
 		}
 		return next(c)
 	}
 }
 
-func RequireWrite(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		u := GetUserInfo(c)
-		if u != nil && !u.CanWrite {
-			return echo.NewHTTPError(http.StatusForbidden, "write permission required")
-		}
-		return next(c)
+func RequireAdmin(excludeUrlPattern []string) echo.MiddlewareFunc {
+	excludePatterns := []*regexp.Regexp{}
+	for _, v := range excludeUrlPattern {
+		excludePatterns = append(excludePatterns, regexp.MustCompile(v))
 	}
-}
-
-func RequireAdmin(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		u := GetUserInfo(c)
-		if u != nil && !u.IsAdmin {
-			return echo.NewHTTPError(http.StatusForbidden, "admin permission required")
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			url := c.Request().URL.Path
+			for _, v := range excludePatterns {
+				if v.MatchString(url) {
+					return next(c)
+				}
+			}
+			u := GetUserInfo(c)
+			if u != nil && !u.IsAdmin {
+				return echo.NewHTTPError(http.StatusForbidden, "admin permission required")
+			}
+			return next(c)
 		}
-		return next(c)
 	}
 }

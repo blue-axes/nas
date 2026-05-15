@@ -2,7 +2,9 @@ package utils
 
 func StrInArray(str string, arr []string, equal func(src, dst string) bool) bool {
 	if equal == nil {
-		return false
+		equal = func(src, dst string) bool {
+			return src == dst
+		}
 	}
 	for _, v := range arr {
 		if equal(str, v) {

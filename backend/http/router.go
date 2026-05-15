@@ -14,26 +14,19 @@ import (
 
 func initRouter(svc *service.Service, e *echo.Echo) {
 	example.InitRouter(svc, e.Group("/example"))
+	su := e.Group("/simple_upload", FilePermissionCheck)
+	simple_upload.InitRouter(svc, su)
 
-	su := e.Group("/simple_upload")
-	su.Use(RequireRead)
-	simple_upload.InitRouter(svc, su, RequireWrite)
+	wd := e.Group("/webdav", FilePermissionCheck)
+	webdav.InitRouter(svc, wd)
 
-	webdav.InitRouter(svc, e.Group("/webdav"))
-
-	userHandler := user.New(svc)
-
-	ug := e.Group("/api/users")
-	ug.Use(RequireAdmin)
-	user.InitRouter(svc, ug, userHandler)
-
-	e.GET("/api/users/me", userHandler.Me)
-
-	pwGroup := e.Group("/api/users")
-	pwGroup.PUT("/:username/password", userHandler.ChangePassword)
-
-	e.POST("/api/login", userHandler.Login)
-	e.POST("/api/logout", userHandler.Logout)
+	userApiPrefix := "/api/users"
+	ug := e.Group(userApiPrefix, RequireAdmin([]string{
+		userApiPrefix + "/me",
+		userApiPrefix + "/login",
+		userApiPrefix + "/logout",
+	}))
+	user.InitRouter(svc, ug)
 
 	staticRoot := svc.Config().Http.StaticRoot
 	e.Static("/", staticRoot)

@@ -4,7 +4,7 @@ function ApiRequest(url, initRequest) {
     credentials: "same-origin",
   })
     .then((resp) => {
-      if (resp.status === 401 && !url.includes("/api/login")) {
+      if (resp.status === 401 && !url.includes("/api/users/login")) {
         window.dispatchEvent(new CustomEvent("auth:unauthorized"));
         throw new Error("请先登录");
       }

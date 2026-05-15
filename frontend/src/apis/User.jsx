@@ -1,7 +1,7 @@
 import ApiRequest from "./Api.jsx";
 
 export function Login(username, password) {
-  return ApiRequest("/api/login", {
+  return ApiRequest("/api/users/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ Username: username, Password: password }),
@@ -9,7 +9,7 @@ export function Login(username, password) {
 }
 
 export function Logout() {
-  return ApiRequest("/api/logout", {
+  return ApiRequest("/api/users/logout", {
     method: "POST",
   });
 }

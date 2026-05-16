@@ -36,7 +36,7 @@
     },
     "MDNS": {
         "Enabled": true,
-        "ServiceName": "_nas-web._tcp",
+        "ServiceName": "_http._tcp",
         "Hostname": "nas.local",
         "Info": "NAS Web Service"
     }

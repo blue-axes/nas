@@ -168,7 +168,7 @@ func (c *NasConfig) SetDefault() {
 
 func (c *MDNSConfig) SetDefault() {
 	if c.ServiceName == "" {
-		c.ServiceName = "_nas-web._tcp"
+		c.ServiceName = "_http._tcp"
 	}
 	if c.Hostname == "" {
 		c.Hostname = "nas"

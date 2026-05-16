@@ -9,11 +9,11 @@ import (
 
 type (
 	Service struct {
-		cfg        *types.Config
-		store      *store.Store
-		vfs        vfs.MountFs
-		session    *SessionStore
-		mdnsServer *mdns.Server
+		cfg         *types.Config
+		store       *store.Store
+		vfs         vfs.MountFs
+		session     *SessionStore
+		mdnsServers []*mdns.Server
 	}
 	Option func(svc *Service) error
 )

@@ -14,6 +14,7 @@ func InitRouter(svc *service.Service, e *echo.Group) {
 	e.DELETE("/object/*", handler.Delete)
 	e.PATCH("/object/*", handler.UpdateTags)
 
+	e.GET("/objects", handler.ReadDir)
 	e.GET("/objects/*", handler.ReadDir)
 	e.POST("/objects/", handler.MultiUpload)
 

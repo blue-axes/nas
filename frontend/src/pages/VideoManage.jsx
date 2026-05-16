@@ -249,7 +249,7 @@ function VideoManage() {
 
   const [currentDir, setCurrentDir] = useState("/video/");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
-  const [pathItems, setPathItems] = useState([{ title: <HomeOutlined />, path: "/" }, { title: "video", path: "/video/" }]);
+  const [pathItems, setPathItems] = useState([{ title: <HomeOutlined />, path: "/video/" }, { title: "video", path: "/video/" }]);
   const [showCount, setShowCount] = useState(PAGE_SIZE);
 
   const [imageList, dispatch] = useImmerReducer(ImageList, []);

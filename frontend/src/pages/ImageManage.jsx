@@ -175,7 +175,7 @@ function ImageManage() {
   const [currentDir, setCurrentDir] = useState("/img/");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
   const [pathItems, setPathItems] = useState([
-    { title: <HomeOutlined />, path: "/" },
+    { title: <HomeOutlined />, path: "/img/" },
     { title: "img", path: "/img/" },
   ]);
   const [showCount, setShowCount] = useState(PAGE_SIZE);

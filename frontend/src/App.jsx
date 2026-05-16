@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Outlet } from "react-router";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { Button, ConfigProvider, Layout, Menu, theme, Modal, Form, Input, message, Space, Tag } from "antd";
 import {
   DeliveredProcedureOutlined,
@@ -14,6 +14,7 @@ import {
   KeyOutlined,
   UserOutlined,
   SyncOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import zh_CN from "antd/locale/zh_CN";
 import "antd/dist/reset.css";
@@ -69,6 +70,12 @@ function buildMenuConfig(user) {
     icon: <DeliveredProcedureOutlined />,
     children: [
       {
+        label: "所有文件",
+        title: "所有文件",
+        icon: <AppstoreOutlined />,
+        link: "/all",
+      },
+      {
         label: "图片文件",
         title: "图片文件",
         icon: <PictureOutlined />,
@@ -121,6 +128,7 @@ function initMenu(user) {
 function App() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [hasRedirected, setHasRedirected] = useState(false);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
@@ -130,7 +138,7 @@ function App() {
   const [passwordForm] = Form.useForm();
   const [scanning, setScanning] = useState(false);
 
-  const [items, keyLink] = initMenu(user);
+  const [items, keyLink] = useMemo(() => initMenu(user), [user]);
 
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768);
@@ -158,6 +166,27 @@ function App() {
     window.addEventListener("auth:unauthorized", handler);
     return () => window.removeEventListener("auth:unauthorized", handler);
   }, []);
+
+  useEffect(() => {
+    if (user && !hasRedirected) {
+      setHasRedirected(true);
+      const hash = window.location.hash.replace("#", "");
+      if (!hash || hash === "/") {
+        navigate("/all");
+      }
+    }
+  }, [user, hasRedirected, navigate]);
+
+  // 同步菜单高亮与当前路由
+  const location = useLocation();
+  useEffect(() => {
+    for (const [key, link] of Object.entries(keyLink)) {
+      if (link === location.pathname) {
+        setSelectedKeys([key]);
+        break;
+      }
+    }
+  }, [location.pathname, keyLink]);
 
   const handleMenuClick = ({ key }) => {
     const to = keyLink[key];

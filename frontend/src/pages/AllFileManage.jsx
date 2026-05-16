@@ -1,5 +1,4 @@
 import {
-  Layout,
   Button,
   Upload,
   Drawer,
@@ -37,15 +36,14 @@ import useScreenWidth from "../hooks/useScreenWidth";
 const pathPrefix = "/simple_upload/object";
 const { Dragger } = Upload;
 
-function FileManage() {
+function AllFileManage() {
   const sw = useScreenWidth();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const [currentDir, setCurrentDir] = useState("/other/");
+  const [currentDir, setCurrentDir] = useState("");
   const [showUploadDrawer, setShowUploadDrawer] = useState(false);
   const [pathItems, setPathItems] = useState([
-    { title: <HomeOutlined />, path: "/other/" },
-    { title: "other", path: "/other/" },
+    { title: <HomeOutlined />, path: "/" },
   ]);
 
   const [imageList, dispatch] = useImmerReducer(ImageList, []);
@@ -62,9 +60,9 @@ function FileManage() {
   }, []);
 
   const changeDir = (dirName) => {
-    const nextDir = path.normalize(path.join(currentDir, dirName));
+    const nextDir = currentDir ? path.join(currentDir, dirName) : dirName;
     setCurrentDir(nextDir);
-    setPathItems([...pathItems, { title: dirName, path: nextDir }]);
+    setPathItems([...pathItems, { title: dirName, path: dirName }]);
     ReadDir(nextDir).then((data) => {
       dispatch({ type: "list", payload: data?.List });
     });
@@ -236,7 +234,7 @@ function FileManage() {
       width: sw < 480 ? 120 : 200,
       render: (_, record) => {
         if (record.FileType === "dir") return null;
-        const filepath = path.join(currentDir, record.Name);
+        const filepath = currentDir ? path.join(currentDir, record.Name) : record.Name;
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 2, flex: 1 }}>
@@ -266,7 +264,7 @@ function FileManage() {
               <Button type="text" size="small" icon={<DownloadOutlined />} href={path.join(pathPrefix, currentDir, record.Name)} target="_blank" />
             </Tooltip>
             <Tooltip title="Delete">
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteFile(path.join(currentDir, record.Name))} />
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteFile(currentDir ? path.join(currentDir, record.Name) : record.Name)} />
             </Tooltip>
           </div>
         );
@@ -366,4 +364,4 @@ function FileManage() {
   );
 }
 
-export default FileManage;
+export default AllFileManage;

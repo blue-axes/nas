@@ -4,13 +4,14 @@ import (
 	stdErr "errors"
 	"strings"
 
+	"path"
+	"time"
+
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
 	"github.com/blue-axes/tmpl/types"
 	"gorm.io/gorm"
-	"path"
-	"time"
 )
 
 type (
@@ -199,4 +200,14 @@ func (s *txStore) UpsertFileByName(ctx *context.Context, name string, e *types.F
 	mdl := file{}
 	mdl.FromEntity(*e)
 	return s.db.Create(&mdl).Error
+}
+
+func (s *txStore) GetFileByPath(ctx *context.Context, filePath string) (res *types.File, err error) {
+	mdl := file{}
+	err = s.db.Where("path = ?", filePath).First(&mdl).Error
+	if stdErr.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.WithCode(constants.ErrCodeNotFound, filePath+" not found")
+	}
+	f := mdl.ToEntity()
+	return &f, nil
 }

@@ -1,9 +1,7 @@
 package http
 
 import (
-	// "os"
-	// "strings"
-
+	"github.com/blue-axes/tmpl/http/api"
 	"github.com/blue-axes/tmpl/http/api/example"
 	"github.com/blue-axes/tmpl/http/api/simple_upload"
 	"github.com/blue-axes/tmpl/http/api/user"
@@ -30,4 +28,7 @@ func initRouter(svc *service.Service, e *echo.Echo) {
 
 	staticRoot := svc.Config().Http.StaticRoot
 	e.Static("/", staticRoot)
+
+	scanHandler := api.NewFileScannerHandler(svc)
+	e.POST("/api/scanfs", scanHandler.Scan, RequireAdmin([]string{}))
 }

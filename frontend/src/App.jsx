@@ -13,10 +13,12 @@ import {
   SettingOutlined,
   KeyOutlined,
   UserOutlined,
+  SyncOutlined,
 } from "@ant-design/icons";
 import zh_CN from "antd/locale/zh_CN";
 import "antd/dist/reset.css";
 import { Login, Logout, GetCurrentUser, ChangePassword } from "./apis/User.jsx";
+import { ScanFiles } from "./apis/SimpleUpload.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 
 const Sider = Layout.Sider;
@@ -125,6 +127,7 @@ function App() {
   const [selectedKeys, setSelectedKeys] = useState(["key0key0"]);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordForm] = Form.useForm();
+  const [scanning, setScanning] = useState(false);
 
   const [items, keyLink] = initMenu(user);
 
@@ -186,6 +189,20 @@ function App() {
     }
     setUser(null);
     navigate("/");
+  };
+
+  const handleScanFiles = async () => {
+    setScanning(true);
+    try {
+      const result = await ScanFiles();
+      message.success(
+        `扫描完成：共 ${result.Total} 个文件，新增 ${result.New} 个，跳过 ${result.Skipped} 个`
+      );
+    } catch (e) {
+      message.error(e.message || "扫描失败");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const themeConfig = {
@@ -463,6 +480,16 @@ function App() {
                 <Tag color="cyan" icon={<UserOutlined />}>
                   {user.Username}
                 </Tag>
+                {user.IsAdmin && (
+                  <Button
+                    icon={<SyncOutlined spin={scanning} />}
+                    size="small"
+                    onClick={handleScanFiles}
+                    loading={scanning}
+                  >
+                    扫描文件
+                  </Button>
+                )}
                 <Button
                   icon={<KeyOutlined />}
                   size="small"

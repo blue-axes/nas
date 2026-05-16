@@ -47,3 +47,9 @@ export function Mkdir(dirpath) {
     method: "POST",
   });
 }
+
+export function ScanFiles() {
+  return ApiRequest("/api/scanfs", {
+    method: "POST",
+  });
+}

@@ -92,6 +92,10 @@ func main() {
 		}
 	}()
 
+	if err := svc.StartMDNS(); err != nil {
+		log.Errorf("mDNS start failed: %s", err.Error())
+	}
+
 	// 系统信号
 	var (
 		sig = make(chan os.Signal)
@@ -99,6 +103,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT)
 	<-sig
 	srv.Shutdown()
+	svc.ShutdownMDNS()
 	os.Exit(0)
 }
 

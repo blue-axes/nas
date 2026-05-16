@@ -3,14 +3,15 @@ package service
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/blue-axes/tmpl/pkg/constants"
-	"github.com/blue-axes/tmpl/pkg/errors"
-	"github.com/blue-axes/tmpl/vfs"
-	"github.com/google/uuid"
 	"io"
 	"io/fs"
 	"os"
 	"path"
+
+	"github.com/blue-axes/tmpl/pkg/constants"
+	"github.com/blue-axes/tmpl/pkg/errors"
+	"github.com/blue-axes/tmpl/vfs"
+	"github.com/google/uuid"
 )
 
 func (svc *Service) SaveFile(name string, md5Sum string, r io.Reader) error {
@@ -57,7 +58,7 @@ func (svc *Service) FsRemove(name string) error {
 }
 
 func (svc *Service) FsMkdirAll(name string) error {
-	return svc.vfs.MkdirAll(name, 700)
+	return svc.vfs.MkdirAll(name, 0700)
 }
 
 func (svc *Service) FsReadDir(name string) ([]fs.DirEntry, error) {

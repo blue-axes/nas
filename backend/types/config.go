@@ -47,6 +47,7 @@ type (
 		Log      LogConfig      `json:"Log" yaml:"Log"`
 		Database DatabaseConfig `json:"Database" yaml:"Database"`
 		Nas      NasConfig      `json:"Nas" yaml:"Nas"`
+		MDNS     MDNSConfig     `json:"MDNS" yaml:"MDNS"`
 	}
 
 	LogConfig struct {
@@ -57,6 +58,13 @@ type (
 	NasConfig          struct {
 		SimpleUploadRoot   string             `json:"SimpleUploadRoot" yaml:"SimpleUploadRoot"`
 		RealFilenamePolicy RealFilenamePolicy `json:"RealFilenamePolicy" yaml:"RealFilenamePolicy"`
+	}
+
+	MDNSConfig struct {
+		Enabled     bool   `json:"Enabled" yaml:"Enabled"`
+		ServiceName string `json:"ServiceName" yaml:"ServiceName"`
+		Hostname    string `json:"Hostname" yaml:"Hostname"`
+		Info        string `json:"Info" yaml:"Info"`
 	}
 )
 
@@ -75,6 +83,7 @@ func (cfg *Config) SetDefault() {
 	cfg.Database.Rdb.SetDefault()
 	cfg.Database.Mongo.SetDefault()
 	cfg.Nas.SetDefault()
+	cfg.MDNS.SetDefault()
 }
 
 func (cfg *LogConfig) SetDefault() {
@@ -154,5 +163,17 @@ func (c *MongoConfig) SetDefault() {
 func (c *NasConfig) SetDefault() {
 	if c.RealFilenamePolicy == "" {
 		c.RealFilenamePolicy = RFNP_UUID
+	}
+}
+
+func (c *MDNSConfig) SetDefault() {
+	if c.ServiceName == "" {
+		c.ServiceName = "_nas-web._tcp"
+	}
+	if c.Hostname == "" {
+		c.Hostname = "nas"
+	}
+	if c.Info == "" {
+		c.Info = "NAS Web Service"
 	}
 }

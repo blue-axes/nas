@@ -27,3 +27,9 @@ Database:
 Nas:
     SimpleUploadRoot: "/data"
     RealFilenamePolicy: "origin"
+
+MDNS:
+    Enabled: true
+    ServiceName: "_nas-web._tcp"
+    Hostname: "nas.local"
+    Info: "NAS Web Service"

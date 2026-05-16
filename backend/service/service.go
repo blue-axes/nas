@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/hashicorp/mdns"
 	"github.com/blue-axes/tmpl/store"
 	"github.com/blue-axes/tmpl/types"
 	"github.com/blue-axes/tmpl/vfs"
@@ -8,10 +9,11 @@ import (
 
 type (
 	Service struct {
-		cfg     *types.Config
-		store   *store.Store
-		vfs     vfs.MountFs
-		session *SessionStore
+		cfg        *types.Config
+		store      *store.Store
+		vfs        vfs.MountFs
+		session    *SessionStore
+		mdnsServer *mdns.Server
 	}
 	Option func(svc *Service) error
 )

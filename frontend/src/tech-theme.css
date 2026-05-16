@@ -3,6 +3,7 @@
   --bg-secondary: #0f1525;
   --bg-card: rgba(15, 23, 42, 0.75);
   --bg-card-hover: rgba(20, 30, 55, 0.88);
+  --bg-glass: rgba(15, 23, 42, 0.8);
   --bg-sider: #0b1020;
   --bg-header: rgba(10, 14, 39, 0.92);
   --accent-cyan: #00d4ff;
@@ -34,6 +35,7 @@ html, body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
 }
 
 *::-webkit-scrollbar {
@@ -68,6 +70,29 @@ html, body {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes overlaySlideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .tech-page {
@@ -105,6 +130,9 @@ html, body {
   border-bottom: 1px solid var(--border-glow);
   height: 56px;
   flex-shrink: 0;
+  transition: height 0.2s ease, padding 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tech-content {
@@ -113,6 +141,7 @@ html, body {
   padding: 20px 24px;
   position: relative;
   z-index: 1;
+  overscroll-behavior: contain;
 }
 
 .tech-card {
@@ -126,12 +155,17 @@ html, body {
   box-shadow: var(--shadow-card);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .tech-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-card-hover);
   border-color: var(--border-glow-strong);
+}
+
+.tech-card:active {
+  transform: scale(0.97);
 }
 
 .tech-grid {
@@ -168,9 +202,10 @@ html, body {
 .tech-folder-icon {
   font-size: 64px;
   color: var(--accent-cyan);
-  display: block;
-  line-height: 170px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 170px;
   filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.3));
   transition: filter 0.3s ease;
 }
@@ -198,6 +233,7 @@ html, body {
   padding: 2px 6px;
   border-radius: 4px;
   transition: color 0.2s ease, background 0.2s ease;
+  touch-action: manipulation;
 }
 
 .tech-breadcrumb-item:hover {
@@ -208,6 +244,32 @@ html, body {
 .tech-breadcrumb-separator {
   color: var(--text-muted);
   margin: 0 2px;
+}
+
+.tech-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.tech-overlay-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(240px, 80vw);
+  background: #0b1020;
+  border-right: 1px solid var(--border-glow);
+  z-index: 100;
+  animation: overlaySlideIn 0.25s ease;
+}
+
+.tech-overlay-dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
 }
 
 @media (max-width: 768px) {
@@ -232,7 +294,7 @@ html, body {
 
   .tech-folder-icon {
     font-size: 48px;
-    line-height: 120px;
+    height: 120px;
   }
 
   .tech-breadcrumb-item {
@@ -275,13 +337,21 @@ html, body {
 }
 
 @media (max-width: 480px) {
+  .tech-header {
+    padding: 0 8px;
+  }
+
+  .tech-content {
+    padding: 8px;
+  }
+
   .tech-logo {
     font-size: 14px;
   }
 
   .tech-folder-icon {
     font-size: 36px;
-    line-height: 90px;
+    height: 90px;
   }
 
   .tech-breadcrumb-item {
@@ -291,5 +361,38 @@ html, body {
     text-overflow: ellipsis;
     white-space: nowrap;
     vertical-align: middle;
+  }
+
+  .tech-grid {
+    gap: 8px;
+  }
+
+  .ant-table {
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .tech-grid {
+    gap: 6px;
+  }
+
+  .tech-header {
+    padding: 0 6px;
+  }
+
+  .tech-content {
+    padding: 6px;
+  }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .tech-header {
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+
+  .tech-content {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
 }

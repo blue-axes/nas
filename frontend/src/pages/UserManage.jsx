@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button, Table, Modal, Form, Input, Switch, Popconfirm, message, Space, Tag } from "antd";
+import { Button, Table, Modal, Form, Input, Switch, Popconfirm, message, Space, Tag, Tooltip } from "antd";
 import { PlusOutlined, DeleteOutlined, EditOutlined, UserOutlined, CrownOutlined } from "@ant-design/icons";
 import { ListUsers, CreateUser, UpdateUser, DeleteUser } from "../apis/User.jsx";
+import useScreenWidth from "../hooks/useScreenWidth.js";
 
 export default function UserManage() {
+  const sw = useScreenWidth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -77,39 +79,45 @@ export default function UserManage() {
       dataIndex: "Username",
       key: "Username",
       render: (text, record) => (
-        <Space>
+        <Space wrap size={4}>
           {record.IsAdmin ? <CrownOutlined style={{ color: "#f59e0b" }} /> : <UserOutlined />}
           <span>{text}</span>
           {record.IsAdmin && <Tag color="gold">Admin</Tag>}
         </Space>
       ),
     },
-    {
-      title: "Read",
-      dataIndex: "CanRead",
-      key: "CanRead",
-      render: (v) => (v ? <Tag color="cyan">Yes</Tag> : <Tag>No</Tag>),
-    },
-    {
-      title: "Write",
-      dataIndex: "CanWrite",
-      key: "CanWrite",
-      render: (v) => (v ? <Tag color="cyan">Yes</Tag> : <Tag>No</Tag>),
-    },
+    ...(sw >= 480 ? [
+      {
+        title: "Read",
+        dataIndex: "CanRead",
+        key: "CanRead",
+        render: (v) => (v ? <Tag color="cyan">Yes</Tag> : <Tag>No</Tag>),
+      },
+      {
+        title: "Write",
+        dataIndex: "CanWrite",
+        key: "CanWrite",
+        render: (v) => (v ? <Tag color="cyan">Yes</Tag> : <Tag>No</Tag>),
+      },
+    ] : []),
     {
       title: "Actions",
       key: "actions",
       render: (_, record) => {
         if (record.IsAdmin) return null;
         return (
-        <Space>
-          <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)}>
-            Edit
-          </Button>
-          <Popconfirm title="Delete this user?" onConfirm={() => handleDelete(record)}>
-            <Button icon={<DeleteOutlined />} size="small" danger>
-              Delete
+        <Space size={4}>
+          <Tooltip title="Edit">
+            <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)}>
+              {sw >= 600 && "Edit"}
             </Button>
+          </Tooltip>
+          <Popconfirm title="Delete this user?" onConfirm={() => handleDelete(record)} placement="topRight">
+            <Tooltip title="Delete">
+              <Button icon={<DeleteOutlined />} size="small" danger>
+                {sw >= 600 && "Delete"}
+              </Button>
+            </Tooltip>
           </Popconfirm>
         </Space>
         );
@@ -118,11 +126,11 @@ export default function UserManage() {
   ];
 
   return (
-    <div style={{ padding: 24, height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h2 style={{ color: "var(--accent-cyan)", margin: 0, fontSize: 20, fontWeight: 600 }}>User Management</h2>
+    <div style={{ padding: sw < 768 ? 12 : 24, height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ color: "var(--accent-cyan)", margin: 0, fontSize: sw < 480 ? 16 : 20, fontWeight: 600 }}>User Management</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Create User
+          {sw >= 480 && "Create User"}
         </Button>
       </div>
       <Table
@@ -132,6 +140,8 @@ export default function UserManage() {
         loading={loading}
         style={{ flex: 1 }}
         pagination={false}
+        size={sw < 768 ? "small" : "middle"}
+        scroll={{ x: sw < 480 ? 350 : 500 }}
       />
       <Modal
         title={editingUser ? "Edit User" : "Create User"}
@@ -139,6 +149,8 @@ export default function UserManage() {
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
         okText={editingUser ? "Save" : "Create"}
+        width={sw < 480 ? "95%" : undefined}
+        centered={sw < 480}
       >
         <Form form={form} layout="vertical">
           <Form.Item

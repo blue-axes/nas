@@ -8,6 +8,7 @@ import {
   Tooltip,
   Empty,
   Modal,
+  Select,
   Slider,
   Input,
   Tag,
@@ -158,9 +159,19 @@ function VideoPlayer({ src, open, onClose }) {
             <button style={styles.controlBtn} onClick={() => skip(SKIP_SECONDS)} title={`Forward ${SKIP_SECONDS}s`}><ForwardOutlined /></button>
             <span style={styles.timeText}>{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div style={{ flex: 1 }} />
-            {SPEED_OPTIONS.map((s) => (
-              <button key={s} style={{ ...styles.speedBtn, ...(speed === s ? styles.speedBtnActive : {}) }} onClick={() => changeSpeed(s)}>{s}x</button>
-            ))}
+            {sw < 480 ? (
+              <Select
+                value={speed}
+                onChange={changeSpeed}
+                size="small"
+                style={{ width: 70 }}
+                options={SPEED_OPTIONS.map((s) => ({ value: s, label: `${s}x` }))}
+              />
+            ) : (
+              SPEED_OPTIONS.map((s) => (
+                <button key={s} style={{ ...styles.speedBtn, ...(speed === s ? styles.speedBtnActive : {}) }} onClick={() => changeSpeed(s)}>{s}x</button>
+              ))
+            )}
             <div style={{ flex: 1 }} />
             <button style={styles.controlBtn} onClick={toggleFullscreen} title="Fullscreen (F)">
               {isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
@@ -172,17 +183,22 @@ function VideoPlayer({ src, open, onClose }) {
   );
 }
 
-function VideoCard({ item, currentDir, onDelete, onPlay, onTagsUpdated }) {
-  const [hover, setHover] = useState(false);
+function VideoCard({ item, currentDir, onDelete, onPlay, onTagsUpdated, sw }) {
+  const [showLayer, setShowLayer] = useState(false);
   const [tagOpen, setTagOpen] = useState(false);
   const src = path.join(pathPrefix, currentDir, item.Name);
   const filepath = path.join(currentDir, item.Name);
 
   return (
-    <div className="tech-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div
+      className="tech-card"
+      onMouseEnter={() => setShowLayer(true)}
+      onMouseLeave={() => { if (!tagOpen) setShowLayer(false); }}
+      onTouchStart={() => setShowLayer(true)}
+    >
       <div style={styles.videoThumb} onClick={() => onPlay(item.Name)}>
         <video src={src} style={styles.videoThumbEl} preload="metadata" muted />
-        <div style={{ ...styles.playOverlay, background: hover ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.35)" }}>
+        <div style={{ ...styles.playOverlay, background: showLayer ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.35)" }}>
           <PlayCircleOutlined style={styles.playIcon} />
         </div>
       </div>
@@ -202,7 +218,7 @@ function VideoCard({ item, currentDir, onDelete, onPlay, onTagsUpdated }) {
             open={tagOpen}
             onOpenChange={setTagOpen}
             trigger="click"
-            placement="left"
+            placement={sw < 480 ? "top" : "left"}
             content={<TagEditor filepath={filepath} currentTags={item.Tags} onUpdated={(newTags) => onTagsUpdated(item.Name, newTags)} />}
           >
             <Tooltip title="Edit Tags">
@@ -330,10 +346,10 @@ function VideoManage() {
 
   const allItems = imageList.map((item) => {
     if (item.FileType == "dir") return <FolderCard key={item.Name} item={item} onEnter={changeDir} />;
-    return <VideoCard key={item.Name} item={item} currentDir={currentDir} onDelete={deleteFile} onPlay={openPlayer} onTagsUpdated={handleTagsUpdated} />;
+    return <VideoCard key={item.Name} item={item} currentDir={currentDir} onDelete={deleteFile} onPlay={openPlayer} onTagsUpdated={handleTagsUpdated} sw={sw} />;
   });
 
-  const videoGridCols = sw < 480 ? "1fr" : sw < 768 ? "repeat(auto-fill, minmax(240px, 1fr))" : "repeat(auto-fill, minmax(280px, 1fr))";
+  const videoGridCols = sw < 360 ? "1fr" : sw < 480 ? "repeat(2, 1fr)" : sw < 768 ? "repeat(auto-fill, minmax(240px, 1fr))" : "repeat(auto-fill, minmax(280px, 1fr))";
   const drawerWidth = sw < 768 ? "100%" : "50%";
   const items = allItems.slice(0, showCount);
 

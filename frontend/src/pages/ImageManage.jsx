@@ -86,14 +86,19 @@ const styles = {
   },
 };
 
-function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
-  const [hover, setHover] = useState(false);
+function ImageCard({ item, currentDir, onDelete, onTagsUpdated, sw }) {
+  const [showLayer, setShowLayer] = useState(false);
   const [tagOpen, setTagOpen] = useState(false);
   const src = path.join(pathPrefix, currentDir, item.Name);
   const filepath = path.join(currentDir, item.Name);
 
   return (
-    <div className="tech-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div
+      className="tech-card"
+      onMouseEnter={() => setShowLayer(true)}
+      onMouseLeave={() => { if (!tagOpen) setShowLayer(false); }}
+      onTouchStart={() => setShowLayer(true)}
+    >
       <div style={styles.imageWrap}>
         <Image
           src={src}
@@ -103,7 +108,7 @@ function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
           style={{ objectFit: "cover" }}
         />
       </div>
-      <div style={{ ...styles.imageOverlay, ...(hover || tagOpen ? styles.imageOverlayVisible : {}) }}>
+      <div style={{ ...styles.imageOverlay, ...(showLayer || tagOpen ? styles.imageOverlayVisible : {}) }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={styles.imageName} title={item.Name}>
             {item.Name}
@@ -123,7 +128,7 @@ function ImageCard({ item, currentDir, onDelete, onTagsUpdated }) {
             open={tagOpen}
             onOpenChange={setTagOpen}
             trigger="click"
-            placement="left"
+            placement={sw < 480 ? "top" : "left"}
             content={
               <TagEditor
                 filepath={filepath}
@@ -362,12 +367,13 @@ function ImageManage() {
         currentDir={currentDir}
         onDelete={deleteFile}
         onTagsUpdated={handleTagsUpdated}
+        sw={sw}
       />
     );
   });
 
   const imgGridCols =
-    sw < 480 ? "repeat(2, 1fr)" : sw < 768 ? "repeat(auto-fill, minmax(150px, 1fr))" : "repeat(auto-fill, minmax(220px, 1fr))";
+    sw < 360 ? "repeat(1, 1fr)" : sw < 480 ? "repeat(2, 1fr)" : sw < 768 ? "repeat(auto-fill, minmax(150px, 1fr))" : "repeat(auto-fill, minmax(220px, 1fr))";
   const drawerWidth = sw < 768 ? "100%" : "50%";
 
   const items = allItems.slice(0, showCount);

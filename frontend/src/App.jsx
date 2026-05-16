@@ -123,6 +123,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [siderCollapsed, setSiderCollapsed] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
   const [openKeys, setOpenKeys] = useState(["key0"]);
   const [selectedKeys, setSelectedKeys] = useState(["key0key0"]);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -133,6 +134,7 @@ function App() {
 
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768);
+    setIsCompact(window.innerWidth < 480);
   }, []);
 
   useEffect(() => {
@@ -318,10 +320,13 @@ function App() {
     background: "transparent",
     cursor: "pointer",
     fontSize: "20px",
-    padding: "4px",
+    padding: "10px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: "8px",
   };
 
   const renderSider = () => (
@@ -366,30 +371,9 @@ function App() {
 
   const renderMobileOverlay = () => (
     <>
-      <div
-        onClick={() => setSiderCollapsed(true)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          zIndex: 99,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: 200,
-          background: "#0b1020",
-          borderRight: "1px solid var(--border-glow)",
-          zIndex: 100,
-          display: "flex",
-          flexDirection: "column",
-          paddingTop: 12,
-        }}
-      >
+      <div className="tech-overlay-dismiss" onClick={() => setSiderCollapsed(true)} />
+      <div className="tech-overlay-backdrop" />
+      <div className="tech-overlay-panel" style={{ display: "flex", flexDirection: "column", paddingTop: 12 }}>
         <div
           style={{
             display: "flex",
@@ -427,7 +411,7 @@ function App() {
             selectedKeys={selectedKeys}
             onOpenChange={setOpenKeys}
           />
-          </div>
+        </div>
         <div
           style={{
             padding: "12px 0 20px",
@@ -444,7 +428,7 @@ function App() {
 
   return (
     <>
-      <ConfigProvider locale={zh_CN} componentSize="large" theme={themeConfig}>
+      <ConfigProvider locale={zh_CN} componentSize={isMobile ? "middle" : "large"} theme={themeConfig}>
         {!user ? (
           <LoginPage onLoginSuccess={(userInfo) => setUser(userInfo)} />
         ) : (
@@ -476,9 +460,9 @@ function App() {
               <span className="tech-logo">NAS</span>
             </div>
             {user ? (
-              <Space size="small">
-                <Tag color="cyan" icon={<UserOutlined />}>
-                  {user.Username}
+              <Space size={isCompact ? 4 : "small"}>
+                <Tag color="cyan" icon={<UserOutlined />} style={isCompact ? { maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" } : undefined}>
+                  {!isCompact && user.Username}
                 </Tag>
                 {user.IsAdmin && (
                   <Button
@@ -486,8 +470,9 @@ function App() {
                     size="small"
                     onClick={handleScanFiles}
                     loading={scanning}
+                    title="扫描文件"
                   >
-                    扫描文件
+                    {!isCompact && "扫描文件"}
                   </Button>
                 )}
                 <Button
@@ -497,15 +482,17 @@ function App() {
                     passwordForm.resetFields();
                     setPasswordModalOpen(true);
                   }}
+                  title="修改密码"
                 >
-                  修改密码
+                  {!isCompact && "修改密码"}
                 </Button>
                 <Button
                   size="small"
                   danger
                   onClick={handleLogout}
+                  title="退出登录"
                 >
-                  退出登录
+                  {!isCompact && "退出登录"}
                 </Button>
               </Space>
             ) : (
@@ -551,6 +538,9 @@ function App() {
         }}
         okText="确认"
         cancelText="取消"
+        width={isCompact ? "95%" : undefined}
+        destroyOnClose
+        centered={isMobile}
       >
         <Form form={passwordForm} layout="vertical">
           <Form.Item

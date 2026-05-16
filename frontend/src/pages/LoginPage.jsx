@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Form, Input, Button, message, Typography } from "antd";
 import { UserOutlined, LockOutlined, CloudServerOutlined } from "@ant-design/icons";
 import { Login } from "../apis/User.jsx";
+import useScreenWidth from "../hooks/useScreenWidth.js";
 
 export default function LoginPage({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const sw = useScreenWidth();
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -28,22 +30,25 @@ export default function LoginPage({ onLoginSuccess }) {
         justifyContent: "center",
         alignItems: "center",
         background: "var(--bg-primary)",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div
         style={{
-          width: 360,
-          padding: "40px 32px",
+          width: sw < 400 ? "calc(100vw - 32px)" : 360,
+          padding: sw < 400 ? "32px 16px" : "40px 32px",
           background: "var(--bg-glass)",
           borderRadius: 12,
           border: "1px solid var(--border-glow)",
           boxShadow: "0 0 40px rgba(0, 212, 255, 0.08)",
+          animation: "fadeInUp 0.5s ease",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ textAlign: "center", marginBottom: sw < 400 ? 24 : 32 }}>
           <CloudServerOutlined
             style={{
-              fontSize: 48,
+              fontSize: sw < 400 ? 36 : 48,
               color: "var(--accent-cyan)",
               filter: "drop-shadow(0 0 12px rgba(0,212,255,0.4))",
             }}
@@ -53,7 +58,7 @@ export default function LoginPage({ onLoginSuccess }) {
           </Typography.Title>
           <Typography.Text type="secondary">请登录以继续</Typography.Text>
         </div>
-        <Form form={form} onFinish={handleSubmit} size="large">
+        <Form form={form} onFinish={handleSubmit} size={sw < 400 ? "middle" : "large"}>
           <Form.Item name="Username" rules={[{ required: true, message: "请输入用户名" }]}>
             <Input prefix={<UserOutlined />} placeholder="用户名" />
           </Form.Item>

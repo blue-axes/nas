@@ -197,9 +197,9 @@ function FileManage() {
       width: 40,
       render: (_, record) => {
         if (record.FileType === "dir") {
-          return <FolderOutlined style={{ color: "#00d4ff", fontSize: "18px", filter: "drop-shadow(0 0 6px rgba(0,212,255,0.3))" }} />;
+          return <FolderOutlined style={{ color: "#00d4ff", fontSize: sw < 480 ? 16 : 18, filter: "drop-shadow(0 0 6px rgba(0,212,255,0.3))" }} />;
         }
-        return <FileOutlined style={{ color: "#94a3b8", fontSize: "18px" }} />;
+        return <FileOutlined style={{ color: "#94a3b8", fontSize: sw < 480 ? 16 : 18 }} />;
       },
     },
     {
@@ -213,41 +213,40 @@ function FileManage() {
         return <a href={path.join(pathPrefix, currentDir, record.Name)} target="_blank" rel="noreferrer" style={{ color: "#e2e8f0" }}>{text}</a>;
       },
     },
-    {
-      title: "Type",
-      width: 100,
-      render: (_, record) => {
-        if (record.FileType === "dir") return "Folder";
-        return getExt(record.Name) || "File";
+    ...(sw >= 480 ? [
+      {
+        title: "Type",
+        width: 100,
+        render: (_, record) => {
+          if (record.FileType === "dir") return "Folder";
+          return getExt(record.Name) || "File";
+        },
       },
-    },
-    {
-      title: "Size",
-      width: 120,
-      render: (_, record) => {
-        if (record.FileType === "dir") return "-";
-        return formatSize(record.Size);
+      {
+        title: "Size",
+        width: 100,
+        render: (_, record) => {
+          if (record.FileType === "dir") return "-";
+          return formatSize(record.Size);
+        },
       },
-    },
+    ] : []),
     {
       title: "Tags",
-      width: 200,
+      width: sw < 480 ? 120 : 200,
       render: (_, record) => {
         if (record.FileType === "dir") return null;
         const filepath = path.join(currentDir, record.Name);
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 2, flex: 1 }}>
-              {(record.Tags || []).slice(0, 3).map((t) => (
+              {(record.Tags || []).slice(0, sw < 480 ? 1 : 3).map((t) => (
                 <Tag key={t} color="cyan" style={{ margin: 0, fontSize: 10, lineHeight: "16px", padding: "0 4px", borderRadius: 4 }}>{t}</Tag>
               ))}
-              {(record.Tags || []).length > 3 && (
-                <span style={{ fontSize: 10, color: "#94a3b8" }}>+{(record.Tags || []).length - 3}</span>
-              )}
             </div>
             <Popover
               trigger="click"
-              placement="left"
+              placement={sw < 480 ? "top" : "left"}
               content={<TagEditor filepath={filepath} currentTags={record.Tags} onUpdated={(newTags) => handleTagsUpdated(record.Name, newTags)} />}
             >
               <Button type="text" size="small" icon={<TagsOutlined style={{ color: "#00d4ff", fontSize: 14 }} />} />
@@ -351,10 +350,11 @@ function FileManage() {
               columns={columns}
               rowKey="Name"
               pagination={false}
-              size="middle"
+              size={sw < 768 ? "small" : "middle"}
+              scroll={{ x: sw < 480 ? 400 : 650 }}
               onRow={(record) => {
                 if (record.FileType === "dir") {
-                  return { onDoubleClick: () => changeDir(record.Name), style: { cursor: "pointer" } };
+                  return { onClick: () => changeDir(record.Name), style: { cursor: "pointer" } };
                 }
                 return {};
               }}

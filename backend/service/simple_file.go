@@ -3,16 +3,17 @@ package service
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"io"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
 	"github.com/blue-axes/tmpl/pkg/errors"
 	"github.com/blue-axes/tmpl/store/rdb"
 	"github.com/blue-axes/tmpl/types"
 	"github.com/google/uuid"
-	"io"
-	"os"
-	"path"
-	"strings"
 )
 
 func (svc *Service) SimpleSaveFile(ctx *context.Context, name string, r io.Reader, overwrite bool) error {
@@ -144,9 +145,7 @@ func (svc *Service) SimpleDeleteFile(ctx *context.Context, name string) error {
 func (svc *Service) SimpleListFiles(ctx *context.Context, filePath string) ([]types.File, error) {
 	var cond *types.Condition = nil
 	if filePath != "" {
-		filePath = strings.TrimRight(filePath, "/")
-		tmp := types.ConditionOr(types.ConditionNew("name = ?", filePath),
-			types.ConditionNew("name LIKE ?", filePath+"/%"))
+		tmp := types.ConditionNew("name LIKE ?", filePath+"%")
 		cond = &tmp
 	}
 	return svc.store.RDB().ListFile(ctx, cond, nil)

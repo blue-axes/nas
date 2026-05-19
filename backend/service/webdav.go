@@ -51,7 +51,8 @@ func (fs *webDavFileSystem) Mkdir(ctx context.Context, name string, perm os.File
 	}
 	dbCtx := pkgCtx.New(pkgCtx.WithCtx(ctx))
 	normalized := normalizeName(name)
-	if err := fs.svc.store.RDB().CreateDir(dbCtx, normalized); err != nil {
+	realDirPath := path.Join(fs.svc.cfg.Nas.SimpleUploadRoot, normalized)
+	if err := fs.svc.store.RDB().CreateDir(dbCtx, normalized, realDirPath); err != nil {
 		log.WithError(err).Warnf("webdav mkdir: failed to create db record for %s", normalized)
 	}
 	return nil
@@ -167,10 +168,10 @@ func (fs *webDavFileSystem) syncDirToDB(ctx *pkgCtx.Context, dirPath string) {
 	if dirPath == "" {
 		dirPath = "."
 	}
-	if err := fs.svc.store.RDB().CreateDir(ctx, dirPath); err != nil {
+	basePath := path.Join(fs.svc.cfg.Nas.SimpleUploadRoot, dirPath)
+	if err := fs.svc.store.RDB().CreateDir(ctx, dirPath, basePath); err != nil {
 		log.WithError(err).Warnf("webdav sync dir: create dir db record failed: %s", dirPath)
 	}
-	basePath := path.Join(fs.svc.cfg.Nas.SimpleUploadRoot, dirPath)
 	entries, err := fs.svc.vfs.ReadDir(basePath)
 	if err != nil {
 		log.WithError(err).Warnf("webdav sync dir: read dir failed: %s", basePath)

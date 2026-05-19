@@ -280,7 +280,7 @@ function VideoManage() {
   const changeDir = (dirName) => {
     const nextDir = path.normalize(path.join(currentDir, dirName));
     setCurrentDir(nextDir); setPathItems([...pathItems, { title: dirName, path: nextDir }]); setShowCount(PAGE_SIZE);
-    ReadDir(nextDir).then((data) => dispatch({ type: "list", payload: data?.List }));
+    ReadDir(nextDir).then((data) => dispatch({ type: "list", payload: data?.List || [] }));
   };
 
   const changeDirAbsolute = ({ absolutePath }) => {
@@ -289,7 +289,7 @@ function VideoManage() {
     let absPath = ""; const newPathItems = [];
     for (const item of pathItems) { absPath = path.join(absPath, item.path); newPathItems.push(item); if (absPath === absolutePath) break; }
     setPathItems(newPathItems); setShowCount(PAGE_SIZE);
-    ReadDir(absolutePath).then((data) => dispatch({ type: "list", payload: data?.List }));
+    ReadDir(absolutePath).then((data) => dispatch({ type: "list", payload: data?.List || [] }));
   };
 
   const deleteFile = (filepath) => {
@@ -327,15 +327,15 @@ function VideoManage() {
   };
 
   const handleSearch = useCallback((keyword, tag) => {
-    if (keyword || tag) { setSearching(true); SearchFiles(keyword, tag).then((data) => dispatch({ type: "list", payload: data?.List || [] })); }
-    else { setSearching(false); ReadDir(currentDir).then((data) => dispatch({ type: "list", payload: data?.List || [] })); }
+    if (keyword || tag) { setSearching(true); SearchFiles(keyword, tag).then((data) => dispatch({ type: "list", payload: data?.List || [] || [] })); }
+    else { setSearching(false); ReadDir(currentDir).then((data) => dispatch({ type: "list", payload: data?.List || [] || [] })); }
   }, [currentDir, dispatch]);
 
   const handleCreateFolder = () => {
     const name = newFolderName.trim(); if (!name) return;
     setCreatingFolder(true);
     Mkdir(path.join(currentDir, name)).then(() => { setShowNewFolder(false); setNewFolderName("");
-      ReadDir(currentDir).then((data) => dispatch({ type: "list", payload: data?.List || [] })); })
+      ReadDir(currentDir).then((data) => dispatch({ type: "list", payload: data?.List || [] || [] })); })
       .catch((err) => messageApi.open({ type: "error", content: "Create folder failed: " + err.message }))
       .finally(() => setCreatingFolder(false));
   };

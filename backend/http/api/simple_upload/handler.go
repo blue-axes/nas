@@ -3,6 +3,13 @@ package simple_upload
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+
 	api "github.com/blue-axes/tmpl/http/api"
 	"github.com/blue-axes/tmpl/pkg/constants"
 	"github.com/blue-axes/tmpl/pkg/context"
@@ -11,12 +18,6 @@ import (
 	"github.com/blue-axes/tmpl/types"
 	"github.com/blue-axes/tmpl/types/api_schema"
 	"github.com/labstack/echo/v4"
-	"io"
-	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"time"
 )
 
 type (
@@ -162,25 +163,23 @@ func (h FileObjectHandler) Delete(c echo.Context) error {
 func (h FileObjectHandler) ReadDir(c echo.Context) error {
 	ctx, _ := c.Get(constants.CtxKeyContext).(*context.Context)
 	var (
-		req struct {
-			api_schema.Filename
-		}
 		resp struct {
 			List []api_schema.FileInfo `json:"List,omitempty"`
 		}
 	)
-	if err := c.Bind(&req); err != nil {
-		return err
-	}
-	req.Name = h.correctName(req.Name)
-	req.Name = path.Clean(req.Name + "/")
-	if req.Name == "/" || req.Name == "" {
-		req.Name = ""
+	resp.List = make([]api_schema.FileInfo, 0)
+	reqName := c.Request().URL.Path
+	prefix := "/simple_upload/objects"
+	reqName = strings.TrimPrefix(reqName, prefix)
+	reqName = h.correctName(reqName)
+	reqName = path.Clean(reqName + "/")
+	if reqName == "/" || reqName == "" {
+		reqName = ""
 	} else {
-		req.Name += "/"
+		reqName += "/"
 	}
 
-	entry, err := h.svc.SimpleListFiles(ctx, req.Name)
+	entry, err := h.svc.SimpleListFiles(ctx, reqName)
 	if err != nil {
 		return err
 	}
@@ -193,12 +192,13 @@ func (h FileObjectHandler) ReadDir(c echo.Context) error {
 		if item.IsDir {
 			fileType = "dir"
 			size = 0
-		} else if item.Name != req.Name && path.Dir(item.Name) != path.Dir(req.Name) {
-			fileType = "dir"
-			size = 0
+		}
+		// 父级目录不为请求目录，则忽略
+		if path.Dir(item.Name) != path.Dir(reqName) {
+			continue
 		}
 
-		shortName := h.pickupFilename(item.Name, req.Name)
+		shortName := h.pickupFilename(item.Name, reqName)
 		if distinctMap[shortName] {
 			continue
 		}

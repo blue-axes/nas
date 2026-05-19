@@ -77,6 +77,10 @@ func main() {
 
 	svc.InitSession()
 
+	if err := svc.InitDefaultDirs(); err != nil {
+		log.Errorf("init default dirs err:%s", err.Error())
+	}
+
 	// 初始化server
 	srv, err := http.New(cfg.Http, svc)
 	if err != nil {

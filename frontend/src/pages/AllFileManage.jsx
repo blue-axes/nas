@@ -64,7 +64,7 @@ function AllFileManage() {
     setCurrentDir(nextDir);
     setPathItems([...pathItems, { title: dirName, path: dirName }]);
     ReadDir(nextDir).then((data) => {
-      dispatch({ type: "list", payload: data?.List });
+      dispatch({ type: "list", payload: data?.List || [] });
     });
   };
 
@@ -80,7 +80,7 @@ function AllFileManage() {
     }
     setPathItems(newPathItems);
     ReadDir(absolutePath).then((data) => {
-      dispatch({ type: "list", payload: data?.List });
+      dispatch({ type: "list", payload: data?.List || [] });
     });
   };
 
@@ -141,12 +141,12 @@ function AllFileManage() {
       if (keyword || tag) {
         setSearching(true);
         SearchFiles(keyword, tag).then((data) => {
-          dispatch({ type: "list", payload: data?.List || [] });
+          dispatch({ type: "list", payload: data?.List || [] || [] });
         });
       } else {
         setSearching(false);
         ReadDir(currentDir).then((data) => {
-          dispatch({ type: "list", payload: data?.List || [] });
+          dispatch({ type: "list", payload: data?.List || [] || [] });
         });
       }
     },
@@ -162,7 +162,7 @@ function AllFileManage() {
         setShowNewFolder(false);
         setNewFolderName("");
         ReadDir(currentDir).then((data) => {
-          dispatch({ type: "list", payload: data?.List || [] });
+          dispatch({ type: "list", payload: data?.List || [] || [] });
         });
       })
       .catch((err) =>

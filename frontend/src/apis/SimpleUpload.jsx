@@ -6,7 +6,8 @@ export function ReadDir(dir) {
   return ApiRequest(path.join("/simple_upload/objects", dir), {
     method: "GET",
   }).catch((e) => {
-    message.error(e);
+    message.error(e.message || e);
+    return { List: [] };
   });
 }
 

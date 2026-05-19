@@ -156,9 +156,10 @@ func (s *txStore) UpdateFileTags(ctx *context.Context, name string, tags []strin
 	return s.db.Save(&mdl).Error
 }
 
-func (s *txStore) CreateDir(ctx *context.Context, dirPath string) error {
+func (s *txStore) CreateDir(ctx *context.Context, dirPath string, realPath string) error {
 	mdl := file{
 		Name:  strings.TrimRight(dirPath, "/"),
+		Path:  realPath,
 		IsDir: true,
 		Tags:  "[]",
 	}

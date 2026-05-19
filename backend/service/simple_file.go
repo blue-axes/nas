@@ -161,9 +161,10 @@ func (svc *Service) SimpleUpdateFileTags(ctx *context.Context, name string, tags
 
 func (svc *Service) SimpleMkdir(ctx *context.Context, dirPath string) error {
 	dirPath = path.Clean(dirPath)
-	err := svc.vfs.MkdirAll(path.Join(svc.cfg.Nas.SimpleUploadRoot, dirPath), 0700)
+	realDirPath := path.Join(svc.cfg.Nas.SimpleUploadRoot, dirPath)
+	err := svc.vfs.MkdirAll(realDirPath, 0700)
 	if err != nil {
 		return err
 	}
-	return svc.store.RDB().CreateDir(ctx, dirPath)
+	return svc.store.RDB().CreateDir(ctx, dirPath, realDirPath)
 }

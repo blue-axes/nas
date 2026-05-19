@@ -222,7 +222,7 @@ function ImageManage() {
     setPathItems([...pathItems, { title: dirName, path: nextDir }]);
     setShowCount(PAGE_SIZE);
     ReadDir(nextDir).then((data) => {
-      dispatch({ type: "list", payload: data?.List });
+      dispatch({ type: "list", payload: data?.List || [] });
     });
   };
 
@@ -239,7 +239,7 @@ function ImageManage() {
     setPathItems(newPathItems);
     setShowCount(PAGE_SIZE);
     ReadDir(absolutePath).then((data) => {
-      dispatch({ type: "list", payload: data?.List });
+      dispatch({ type: "list", payload: data?.List || [] });
     });
   };
 
@@ -330,12 +330,12 @@ function ImageManage() {
     if (keyword || tag) {
       setSearching(true);
       SearchFiles(keyword, tag).then((data) => {
-        dispatch({ type: "list", payload: data?.List || [] });
+        dispatch({ type: "list", payload: data?.List || [] || [] });
       });
     } else {
       setSearching(false);
       ReadDir(currentDir).then((data) => {
-        dispatch({ type: "list", payload: data?.List || [] });
+        dispatch({ type: "list", payload: data?.List || [] || [] });
       });
     }
   }, [currentDir, dispatch]);
@@ -349,7 +349,7 @@ function ImageManage() {
         setShowNewFolder(false);
         setNewFolderName("");
         ReadDir(currentDir).then((data) => {
-          dispatch({ type: "list", payload: data?.List || [] });
+          dispatch({ type: "list", payload: data?.List || [] || [] });
         });
       })
       .catch((err) => messageApi.open({ type: "error", content: "Create folder failed: " + err.message }))

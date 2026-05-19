@@ -1,273 +1,174 @@
 # API Testing Examples
 
-## Prerequisites
-
-1. Start the backend server:
-   ```bash
-   cd backend
-   go run main.go -config ./rootfs/etc/config.json
-   ```
-
-2. The server will start on `http://localhost:8088`
-
-## Testing File Operations
-
-### 1. Create a test file
+## Authentication
 
 ```bash
-# Create a test file
-echo "Hello, NAS!" > test.txt
+BASE="http://localhost:8088"
+
+# Login (get session cookie)
+curl -c cookies.txt -X POST "$BASE/api/users/login" \
+  -H "Content-Type: application/json" \
+  -d '{"Username":"admin","Password":"admin"}'
+
+# Get current user
+curl -b cookies.txt "$BASE/api/users/me"
+
+# Logout
+curl -b cookies.txt -X POST "$BASE/api/users/logout"
 ```
 
-### 2. Upload the file
+## File Operations
+
+### Upload
 
 ```bash
-# Method 1: Multipart form upload
-curl -X POST "http://localhost:8088/simple_upload/object/test.txt" \
-  -F "File=@test.txt"
+# Single file (multipart)
+curl -b cookies.txt -X POST "$BASE/simple_upload/object/img/photo.jpg" \
+  -F "File=@photo.jpg"
 
-# Method 2: Binary stream upload
-curl -X POST "http://localhost:8088/simple_upload/object/test.txt" \
+# Single file (binary stream)
+curl -b cookies.txt -X POST "$BASE/simple_upload/object/img/photo.jpg" \
   -H "Content-Type: application/octet-stream" \
-  --data-binary @test.txt
+  --data-binary @photo.jpg
 
-# Method 3: Upload to subdirectory
-curl -X POST "http://localhost:8088/simple_upload/object/documents/myfile.txt" \
-  -F "File=@test.txt"
+# Multi-file upload
+curl -b cookies.txt -X POST "$BASE/simple_upload/objects/" \
+  -F "Dir=uploads" -F "Overwrite=true" \
+  -F "File=@photo1.jpg" -F "File=@photo2.jpg"
 ```
 
-### 3. Get file metadata
+### Download
 
 ```bash
-# Get file info via HEAD request
-curl -I "http://localhost:8088/simple_upload/object/test.txt"
-
-# Response headers:
-# Content-Length: 13
-# Content-Type: application/octet-stream
-# Content-Disposition: attachment; filename=test.txt
+curl -b cookies.txt "$BASE/simple_upload/object/img/photo.jpg" -o photo.jpg
+curl -b cookies.txt "$BASE/simple_upload/object/img/photo.jpg?Download=true" -o photo.jpg
 ```
 
-### 4. Download the file
+### Metadata
 
 ```bash
-# Download and save
-curl "http://localhost:8088/simple_upload/object/test.txt" -o downloaded.txt
-
-# Force download as attachment (triggers browser download)
-curl "http://localhost:8088/simple_upload/object/test.txt?Download=true" -o downloaded.txt
-
-# Display in terminal
-curl "http://localhost:8088/simple_upload/object/test.txt"
+curl -b cookies.txt -I "$BASE/simple_upload/object/img/photo.jpg"
 ```
 
-### 5. List directory contents
+### Directory Listing
 
 ```bash
-# List root directory
-curl "http://localhost:8088/simple_upload/objects/"
+# Root
+curl -b cookies.txt "$BASE/simple_upload/objects/"
 
-# List subdirectory
-curl "http://localhost:8088/simple_upload/objects/documents/"
-
-# Pretty print JSON response
-curl -s "http://localhost:8088/simple_upload/objects/" | jq .
+# Subdirectory
+curl -b cookies.txt "$BASE/simple_upload/objects/img/"
+curl -b cookies.txt "$BASE/simple_upload/objects/img/vacation/"
 ```
 
-### 6. Upload multiple files
+### Create Directory
 
 ```bash
-# Create multiple test files
-echo "File 1" > file1.txt
-echo "File 2" > file2.txt
-echo "File 3" > file3.txt
-
-# Upload multiple files to a directory
-curl -X POST "http://localhost:8088/simple_upload/objects/" \
-  -F "Dir=uploads" \
-  -F "Overwrite=true" \
-  -F "File=@file1.txt" \
-  -F "File=@file2.txt" \
-  -F "File=@file3.txt"
+curl -b cookies.txt -X POST "$BASE/simple_upload/mkdir/img/vacation"
 ```
 
-### 7. Update/overwrite a file
+### Update Tags
 
 ```bash
-# Upload with overwrite flag
-curl -X POST "http://localhost:8088/simple_upload/object/test.txt" \
-  -F "File=@updated_test.txt" \
-  -F "Overwrite=true"
-
-# Try without overwrite (will fail if file exists)
-curl -X POST "http://localhost:8088/simple_upload/object/test.txt" \
-  -F "File=@updated_test.txt"
-# Returns: 409 Conflict with code "file_exists"
-```
-
-### 8. Delete a file
-
-```bash
-# Delete a single file
-curl -X DELETE "http://localhost:8088/simple_upload/object/test.txt"
-
-# Delete a file in subdirectory
-curl -X DELETE "http://localhost:8088/simple_upload/object/documents/myfile.txt"
-```
-
-## Testing Example Endpoints
-
-### SQL Database Examples
-
-```bash
-# Create an example
-curl -X POST "http://localhost:8088/example/create" \
+curl -b cookies.txt -X PATCH "$BASE/simple_upload/object/img/photo.jpg" \
   -H "Content-Type: application/json" \
-  -d '{"Name": "My First Example"}'
-
-# Response:
-# {
-#   "TraceID": "abc123",
-#   "Code": "success",
-#   "Message": "",
-#   "Data": {
-#     "ID": "550e8400-e29b-41d4-a716-446655440000"
-#   }
-# }
-
-# List all examples
-curl -X POST "http://localhost:8088/example/list" \
-  -H "Content-Type: application/json"
+  -d '{"Tags":["vacation","family","2024"]}'
 ```
 
-### MongoDB Examples
+### Search
 
 ```bash
-# Create MongoDB example
-curl -X POST "http://localhost:8088/example/mongo_create" \
+# By keyword
+curl -b cookies.txt "$BASE/simple_upload/search?Keyword=photo"
+
+# By tag
+curl -b cookies.txt "$BASE/simple_upload/search?Tag=vacation"
+
+# Combined
+curl -b cookies.txt "$BASE/simple_upload/search?Keyword=photo&Tag=vacation"
+```
+
+### Delete
+
+```bash
+# Delete file
+curl -b cookies.txt -X DELETE "$BASE/simple_upload/object/img/photo.jpg"
+
+# Delete directory (cascades)
+curl -b cookies.txt -X DELETE "$BASE/simple_upload/object/img/vacation/"
+```
+
+## Admin Operations
+
+### User Management
+
+```bash
+# List users
+curl -b cookies.txt "$BASE/api/users"
+
+# Create user
+curl -b cookies.txt -X POST "$BASE/api/users" \
   -H "Content-Type: application/json" \
-  -d '{"Name": "MongoDB Example"}'
+  -d '{"Username":"guest","Password":"123456","CanRead":true,"CanWrite":false}'
 
-# List MongoDB examples
-curl -X POST "http://localhost:8088/example/mongo_list" \
-  -H "Content-Type: application/json"
-```
-
-## Testing Error Cases
-
-### Invalid filename
-
-```bash
-# Directory traversal attempt (blocked)
-curl -X POST "http://localhost:8088/simple_upload/object/../../../etc/passwd" \
-  -F "File=@test.txt"
-# Returns: 400 Bad Request with code "invalid_arguments"
-
-# Path with ./ (blocked)
-curl -X POST "http://localhost:8088/simple_upload/object/./test.txt" \
-  -F "File=@test.txt"
-# Returns: 400 Bad Request
-```
-
-### File not found
-
-```bash
-# Try to download non-existent file
-curl "http://localhost:8088/simple_upload/object/nonexistent.txt"
-# Returns: 404 Not Found with code "not_found"
-
-# Try to delete non-existent file
-curl -X DELETE "http://localhost:8088/simple_upload/object/nonexistent.txt"
-# Returns: 404 Not Found
-```
-
-### Missing required fields
-
-```bash
-# Create example without Name field
-curl -X POST "http://localhost:8088/example/create" \
+# Update permissions
+curl -b cookies.txt -X PUT "$BASE/api/users/guest" \
   -H "Content-Type: application/json" \
-  -d '{}'
-# Returns: 400 Bad Request
+  -d '{"CanRead":true,"CanWrite":true}'
+
+# Delete user
+curl -b cookies.txt -X DELETE "$BASE/api/users/guest"
+
+# Change password
+curl -b cookies.txt -X PUT "$BASE/api/users/admin/password" \
+  -H "Content-Type: application/json" \
+  -d '{"CurrentPassword":"admin","NewPassword":"newpass"}'
 ```
 
-## File Path Handling
-
-The API automatically handles paths:
+### File Scan
 
 ```bash
-# These all work correctly:
-curl -X POST "http://localhost:8088/simple_upload/object/file.txt" \
-  -F "File=@test.txt"
-
-curl -X POST "http://localhost:8088/simple_upload/object//file.txt" \
-  -F "File=@test.txt"  # Double slashes are normalized
-
-curl -X POST "http://localhost:8088/simple_upload/object/dir\file.txt" \
-  -F "File=@test.txt"  # Backslashes converted to forward slashes
-
-# But these are blocked (security):
-# curl -X POST "http://localhost:8088/simple_upload/object/../file.txt"
-# curl -X POST "http://localhost:8088/simple_upload/object/./file.txt"
+curl -b cookies.txt -X POST "$BASE/api/scanfs"
+# Returns: { "Data": { "Total": 150, "New": 12, "Skipped": 138 } }
 ```
 
-## Response Format
+## WebDAV Access
 
-All responses follow this format:
+```bash
+# List directory via PROPFIND
+curl -u admin:admin -X PROPFIND "$BASE/webdav/"
 
-```json
-{
-  "TraceID": "unique-request-id",
-  "Code": "success|error_code",
-  "Message": "Human readable message",
-  "Data": {}  // Response payload or null
-}
-```
-
-### Success Response
-
-```json
-{
-  "TraceID": "abc123def456",
-  "Code": "success",
-  "Message": "",
-  "Data": null
-}
-```
-
-### Error Response
-
-```json
-{
-  "TraceID": "abc123def456",
-  "Code": "file_exists",
-  "Message": "file has already exists",
-  "Data": null
-}
-```
-
-## PowerShell Examples
-
-For Windows PowerShell users:
-
-```powershell
 # Upload file
-Invoke-RestMethod -Uri "http://localhost:8088/simple_upload/object/test.txt" `
-  -Method Post `
-  -Form @{File=Get-Item "test.txt"}
+curl -u admin:admin -T photo.jpg "$BASE/webdav/img/photo.jpg"
 
-# Download file
-Invoke-WebRequest -Uri "http://localhost:8088/simple_upload/object/test.txt" `
-  -OutFile "downloaded.txt"
+# Download file  
+curl -u admin:admin "$BASE/webdav/img/photo.jpg" -o photo.jpg
 
-# List directory
-Invoke-RestMethod -Uri "http://localhost:8088/simple_upload/objects/" | ConvertTo-Json -Depth 5
+# Create directory via MKCOL
+curl -u admin:admin -X MKCOL "$BASE/webdav/img/albums/"
 
-# Create example
-Invoke-RestMethod -Uri "http://localhost:8088/example/create" `
-  -Method Post `
-  -ContentType "application/json" `
-  -Body '{"Name": "PowerShell Example"}'
+# Delete file
+curl -u admin:admin -X DELETE "$BASE/webdav/img/photo.jpg"
+```
+
+## Error Cases
+
+```bash
+# Path traversal (blocked)
+curl -b cookies.txt "$BASE/simple_upload/object/../../../etc/passwd"
+# → 400: "invalid_arguments"
+
+# File not found
+curl -b cookies.txt "$BASE/simple_upload/object/nonexistent.txt"
+# → 404: "not_found"
+
+# Unauthorized
+curl "$BASE/api/users"
+# → 401: "unauthorized"
+
+# Permission denied (user without CanRead)
+curl -b guest_cookies.txt "$BASE/simple_upload/objects/"
+# → 403: "read permission required"
 ```
 
 ## Python Examples
@@ -275,29 +176,26 @@ Invoke-RestMethod -Uri "http://localhost:8088/example/create" `
 ```python
 import requests
 
-BASE_URL = "http://localhost:8088"
+BASE = "http://localhost:8088"
+session = requests.Session()
 
-# Upload file
-with open("test.txt", "rb") as f:
-    response = requests.post(
-        f"{BASE_URL}/simple_upload/object/test.txt",
-        files={"File": f}
-    )
-    print(response.json())
+# Login
+session.post(f"{BASE}/api/users/login", json={"Username": "admin", "Password": "admin"})
 
-# Download file
-response = requests.get(f"{BASE_URL}/simple_upload/object/test.txt")
-with open("downloaded.txt", "wb") as f:
-    f.write(response.content)
+# Upload
+with open("photo.jpg", "rb") as f:
+    session.post(f"{BASE}/simple_upload/object/img/photo.jpg", files={"File": f})
 
 # List directory
-response = requests.get(f"{BASE_URL}/simple_upload/objects/")
-print(response.json())
+resp = session.get(f"{BASE}/simple_upload/objects/img/")
+for item in resp.json()["Data"]["List"]:
+    print(f"  {item['FileType']:4s} {item['Name']}")
 
-# Create example
-response = requests.post(
-    f"{BASE_URL}/example/create",
-    json={"Name": "Python Example"}
-)
-print(response.json())
+# Search
+resp = session.get(f"{BASE}/simple_upload/search", params={"Keyword": "photo", "Tag": "vacation"})
+print(resp.json())
+
+# Scan filesystem
+resp = session.post(f"{BASE}/api/scanfs")
+print(f"Scanned: {resp.json()['Data']}")
 ```

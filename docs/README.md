@@ -6,6 +6,41 @@
 http://localhost:8088
 ```
 
+## Authentication
+
+Authentication uses session cookies. The default admin account is `admin` / `admin`.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/users/login` | POST | Login, sets session cookie |
+| `/api/users/logout` | POST | Logout, clears session |
+| `/api/users/me` | GET | Get current user info |
+
+### Login
+
+**Endpoint:** `POST /api/users/login`
+
+```json
+{ "Username": "admin", "Password": "admin" }
+```
+
+**Response:**
+```json
+{
+  "TraceID": "...",
+  "Code": "success",
+  "Data": { "Username": "admin", "CanRead": true, "CanWrite": true, "IsAdmin": true }
+}
+```
+
+### Get Current User
+
+**Endpoint:** `GET /api/users/me`
+
+Returns the current authenticated user info. Requires valid session cookie.
+
+---
+
 ## Response Format
 
 All API responses follow a consistent structure:
@@ -21,22 +56,22 @@ All API responses follow a consistent structure:
 
 ### Common Error Codes
 
-| Code | Description |
-|------|-------------|
-| `success` | Request successful |
-| `unknown` | Unknown error |
-| `invalid_arguments` | Invalid request parameters |
-| `not_found` | Resource not found |
-| `file_exists` | File already exists |
-| `file_checksum_invalid` | File checksum verification failed |
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `success` | 200 | Request successful |
+| `unknown` | 503 | Unknown error |
+| `invalid_arguments` | 400 | Invalid request parameters |
+| `not_found` | 404 | Resource not found |
+| `file_exists` | 409 | File already exists |
+| `403` | 403 | Permission denied |
 
-## File Upload API (`/simple_upload`)
+---
+
+## File API (`/simple_upload`)
 
 ### 1. Get File Metadata
 
 **Endpoint:** `HEAD /simple_upload/object/{filename}`
-
-**Description:** Retrieve file metadata without downloading the file content.
 
 **Path Parameters:**
 - `filename` - Path to the file (URL encoded)
@@ -46,12 +81,10 @@ All API responses follow a consistent structure:
 - `Content-Disposition` - Attachment filename
 - `Content-Type` - `application/octet-stream`
 
-**Example Request:**
+**Example:**
 ```bash
 curl -I "http://localhost:8088/simple_upload/object/myfile.txt"
 ```
-
-**Success Response:** `200 OK` with headers only
 
 ---
 
@@ -59,29 +92,16 @@ curl -I "http://localhost:8088/simple_upload/object/myfile.txt"
 
 **Endpoint:** `GET /simple_upload/object/{filename}`
 
-**Description:** Download a file or display it inline.
-
 **Path Parameters:**
 - `filename` - Path to the file (URL encoded)
 
 **Query Parameters:**
-- `Download` (optional) - Set to `true` to force download as attachment
+- `Download` (optional, boolean) - Force download as attachment
 
-**Response Headers:**
-- `Content-Length` - File size in bytes
-- `Content-Type` - Based on file extension or `application/octet-stream`
-- `Content-Disposition` - `attachment; filename={name}` (only when Download=true)
-
-**Example Requests:**
+**Example:**
 ```bash
-# Download file
 curl "http://localhost:8088/simple_upload/object/myfile.txt" -o myfile.txt
-
-# Force download with attachment
-curl "http://localhost:8088/simple_upload/object/myfile.txt?Download=true" -o myfile.txt
 ```
-
-**Success Response:** File content with appropriate headers
 
 ---
 
@@ -89,108 +109,91 @@ curl "http://localhost:8088/simple_upload/object/myfile.txt?Download=true" -o my
 
 **Endpoint:** `POST /simple_upload/object/{filename}`
 
-**Description:** Upload a single file to the server.
-
 **Path Parameters:**
-- `filename` - Target path and name for the file (URL encoded)
+- `filename` - Target path for the file
 
 **Request Body:**
 
-Option 1: Multipart form upload
+Option 1 — Multipart form:
 ```
 Content-Type: multipart/form-data
-
--- Form field "File": the file to upload
--- Form field "Overwrite" (optional): "true" to overwrite existing files
+File: binary file
+Overwrite: (optional) "true" to overwrite
 ```
 
-Option 2: Binary stream upload
+Option 2 — Binary stream:
 ```
 Content-Type: application/octet-stream
-
--- Raw file content in request body
--- Overwrite is automatically set to true
+Body: raw file content (overwrite is automatic)
 ```
 
-**Example Requests:**
+**Example:**
 ```bash
-# Multipart upload
-curl -X POST "http://localhost:8088/simple_upload/object/uploads/document.pdf" \
-  -F "File=@/path/to/document.pdf" \
-  -F "Overwrite=true"
-
-# Binary stream upload
-curl -X POST "http://localhost:8088/simple_upload/object/uploads/document.pdf" \
-  -H "Content-Type: application/octet-stream" \
-  --data-binary @/path/to/document.pdf
+curl -X POST "http://localhost:8088/simple_upload/object/photo.jpg" -F "File=@photo.jpg"
 ```
 
-**Success Response:**
-```json
-{
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
-  "Data": null
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Invalid filename or missing file
-- `409 Conflict` - File exists and Overwrite=false (`file_exists`)
+**Errors:**
+- `400` — Invalid filename
+- `409` — File exists and Overwrite=false
 
 ---
 
-### 4. Delete File
+### 4. Delete File / Directory
 
 **Endpoint:** `DELETE /simple_upload/object/{filename}`
 
-**Description:** Delete a file from the server.
+**Description:** Delete a file or directory. Deleting a directory cascades to all files under it.
 
-**Path Parameters:**
-- `filename` - Path to the file to delete (URL encoded)
-
-**Example Request:**
+**Example:**
 ```bash
-curl -X DELETE "http://localhost:8088/simple_upload/object/uploads/document.pdf"
+curl -X DELETE "http://localhost:8088/simple_upload/object/photo.jpg"
+curl -X DELETE "http://localhost:8088/simple_upload/object/subdir/"
 ```
 
-**Success Response:**
-```json
-{
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
-  "Data": null
-}
-```
-
-**Error Responses:**
-- `404 Not Found` - File does not exist (`not_found`)
+**Errors:**
+- `404` — File not found
 
 ---
 
-### 5. List Directory Contents
+### 5. Update File Tags
+
+**Endpoint:** `PATCH /simple_upload/object/{filename}`
+
+**Description:** Update tags on a file.
+
+**Request Body:**
+```json
+{ "Tags": ["tag1", "tag2", "tag3"] }
+```
+
+**Example:**
+```bash
+curl -X PATCH "http://localhost:8088/simple_upload/object/photo.jpg" \
+  -H "Content-Type: application/json" \
+  -d '{"Tags":["vacation","family"]}'
+```
+
+---
+
+### 6. List Directory Contents
 
 **Endpoint:** `GET /simple_upload/objects/{path}`
 
-**Description:** List files and directories at the specified path.
+**Description:** List files and directories at the specified path. Use `/objects` (no path) for root.
 
 **Path Parameters:**
-- `path` - Directory path to list (URL encoded). Use empty string for root.
+- `path` - Directory path (URL encoded). Empty for root.
 
-**Response Structure:**
+**Response:**
 ```json
 {
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
   "Data": {
     "List": [
       {
-        "Name": "file1.txt",
-        "Size": 1024,
-        "FileType": "file"
+        "Name": "photo.jpg",
+        "Size": 102400,
+        "FileType": "file",
+        "Tags": ["vacation"]
       },
       {
         "Name": "subdir",
@@ -203,204 +206,183 @@ curl -X DELETE "http://localhost:8088/simple_upload/object/uploads/document.pdf"
 ```
 
 **FileInfo Object:**
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `Name` | string | File or directory name |
-| `Size` | number | File size in bytes (0 for directories) |
+| `Size` | uint64 | File size (0 for directories) |
 | `FileType` | string | `"file"` or `"dir"` |
+| `Tags` | []string | File tags (only on files) |
 
-**Example Requests:**
+**Example:**
 ```bash
-# List root directory
-curl "http://localhost:8088/simple_upload/objects/"
-
-# List specific directory
-curl "http://localhost:8088/simple_upload/objects/documents/"
+curl "http://localhost:8088/simple_upload/objects/img/"
 ```
-
-**Notes:**
-- Directories are returned with `FileType: "dir"` and `Size: 0`
-- The path parameter is automatically cleaned (trailing slashes handled)
 
 ---
 
-### 6. Multi-file Upload
+### 7. Multi-file Upload
 
 **Endpoint:** `POST /simple_upload/objects/`
 
-**Description:** Upload multiple files to a specified directory in a single request.
+**Request Body:** Multipart form
+- `Dir` — Target directory path (required)
+- `Overwrite` — `"true"` to overwrite (optional)
+- `File` — One or more files
 
-**Request Body:** Multipart form with:
-- `Dir` - Target directory path (required)
-- `Overwrite` - Set to `"true"` to overwrite existing files (optional, default: `false`)
-- Multiple `File` fields - Files to upload
-
-**Example Request:**
+**Example:**
 ```bash
 curl -X POST "http://localhost:8088/simple_upload/objects/" \
-  -F "Dir=uploads/photos" \
-  -F "Overwrite=true" \
-  -F "File=@/path/to/photo1.jpg" \
-  -F "File=@/path/to/photo2.jpg" \
-  -F "File=@/path/to/photo3.png"
+  -F "Dir=uploads" -F "Overwrite=true" \
+  -F "File=@photo1.jpg" -F "File=@photo2.jpg"
 ```
-
-**Success Response:**
-```json
-{
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
-  "Data": null
-}
-```
-
-**Notes:**
-- All files are uploaded to the directory specified by `Dir`
-- File names are preserved from the original upload
 
 ---
 
-## Example API (`/example`)
+### 8. Create Directory
 
-These are example endpoints for testing the database connections.
+**Endpoint:** `POST /simple_upload/mkdir/{path}`
 
-### 1. List Examples (SQL)
+**Description:** Create a new directory.
 
-**Endpoint:** `POST /example/list`
-
-**Description:** Retrieve all example records from the SQL database.
-
-**Request Body:** Empty or optional filter parameters
-
-**Example Request:**
+**Example:**
 ```bash
-curl -X POST "http://localhost:8088/example/list" \
-  -H "Content-Type: application/json"
+curl -X POST "http://localhost:8088/simple_upload/mkdir/img/vacation"
 ```
 
-**Success Response:**
+---
+
+### 9. Search Files
+
+**Endpoint:** `GET /simple_upload/search`
+
+**Query Parameters:**
+- `Keyword` — Search by filename keyword
+- `Tag` — Filter by tag
+
+**Example:**
+```bash
+curl "http://localhost:8088/simple_upload/search?Keyword=photo&Tag=vacation"
+```
+
+---
+
+### 10. Preview File
+
+**Endpoint:** `GET /simple_upload/preview/{path}`
+
+**Description:** Convert Office/PDF documents to HTML preview. Requires `libreoffice` on the server.
+
+**Example:**
+```bash
+curl "http://localhost:8088/simple_upload/preview/docs/report.docx"
+```
+
+---
+
+## User Management API (`/api/users`)
+
+**Requires admin permission.**
+
+### List Users
+
+**Endpoint:** `GET /api/users`
+
+**Response:**
 ```json
 {
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
   "Data": [
-    {
-      "ID": "1",
-      "Name": "Example 1"
-    },
-    {
-      "ID": "2",
-      "Name": "Example 2"
-    }
+    { "Username": "admin", "CanRead": true, "CanWrite": true, "IsAdmin": true },
+    { "Username": "guest", "CanRead": true, "CanWrite": false, "IsAdmin": false }
   ]
 }
 ```
 
+### Create User
+
+**Endpoint:** `POST /api/users`
+
+```json
+{ "Username": "guest", "Password": "123456", "CanRead": true, "CanWrite": false }
+```
+
+### Update User Permissions
+
+**Endpoint:** `PUT /api/users/{username}`
+
+```json
+{ "CanRead": true, "CanWrite": true }
+```
+
+### Delete User
+
+**Endpoint:** `DELETE /api/users/{username}`
+
+### Change Password
+
+**Endpoint:** `PUT /api/users/{username}/password`
+
+```json
+{ "CurrentPassword": "oldpass", "NewPassword": "newpass" }
+```
+
 ---
 
-### 2. Create Example (SQL)
+## File Scanning API
 
-**Endpoint:** `POST /example/create`
+### Scan Filesystem
 
-**Description:** Create a new example record in the SQL database.
+**Endpoint:** `POST /api/scanfs`
 
-**Request Body:**
+**Requires admin permission.**
+
+Scans the filesystem under `SimpleUploadRoot` and syncs missing file records into the database.
+
+**Response:**
 ```json
 {
-  "Name": "New Example"
+  "Data": { "Total": 150, "New": 12, "Skipped": 138 }
 }
 ```
 
-**Example Request:**
-```bash
-curl -X POST "http://localhost:8088/example/create" \
-  -H "Content-Type: application/json" \
-  -d '{"Name": "New Example"}'
+---
+
+## WebDAV
+
+The server exposes a WebDAV mount at:
+
+```
+http://localhost:8088/webdav/
 ```
 
-**Success Response:**
+Windows mount: `\\nas.local@8088\webdav\`  
+macOS: Finder → Go → Connect to Server → `http://nas.local:8088/webdav/`  
+Linux: `mount -t davfs http://nas.local:8088/webdav/ /mnt/nas`
+
+Supports Basic Auth. Permission checks (`CanRead` / `CanWrite`) are enforced at the filesystem level.
+
+---
+
+## mDNS Discovery
+
+The server broadcasts its service on the local network via mDNS with the hostname `nas.local`. Configuration:
+
 ```json
-{
-  "TraceID": "abc123",
-  "Code": "success",
-  "Message": "",
-  "Data": {
-    "ID": "new-uuid-here"
-  }
+"MDNS": {
+    "Enabled": true,
+    "ServiceName": "_http._tcp",
+    "Hostname": "nas.local",
+    "Info": "NAS Web Service"
 }
 ```
 
-**Validation:**
-- `Name` field is required
+LAN devices can access the NAS at `http://nas.local:8088` without knowing the IP.
 
 ---
 
-### 3. List Examples (MongoDB)
-
-**Endpoint:** `POST /example/mongo_list`
-
-**Description:** Retrieve all example records from MongoDB.
-
-**Example Request:**
-```bash
-curl -X POST "http://localhost:8088/example/mongo_list" \
-  -H "Content-Type: application/json"
-```
-
-**Success Response:** Same as SQL list example
-
----
-
-### 4. Create Example (MongoDB)
-
-**Endpoint:** `POST /example/mongo_create`
-
-**Description:** Create a new example record in MongoDB.
-
-**Request Body:** Same as SQL create example
-
-**Example Request:**
-```bash
-curl -X POST "http://localhost:8088/example/mongo_create" \
-  -H "Content-Type: application/json" \
-  -d '{"Name": "Mongo Example"}'
-```
-
-**Success Response:** Same as SQL create example
-
----
-
-## File Validation Rules
-
-### Filename Validation
-
-Filenames are validated to prevent directory traversal attacks:
-
-**Invalid patterns:**
-- Paths containing `./` or `../`
-- Paths ending with `.` or `..`
-- Windows-style backslashes are converted to forward slashes
-- Leading/trailing slashes are trimmed
-
-**Examples:**
-| Input | Result | Valid |
-|-------|--------|-------|
-| `file.txt` | `file.txt` | Yes |
-| `dir/file.txt` | `dir/file.txt` | Yes |
-| `./file.txt` | Error | No |
-| `../file.txt` | Error | No |
-| `dir/../file.txt` | Error | No |
-| `dir\file.txt` | `dir/file.txt` | Yes (converted) |
-
----
-
-## Configuration Notes
+## Configuration
 
 ### File Storage Policies
-
-Files are stored according to `RealFilenamePolicy` in config:
 
 | Policy | Behavior |
 |--------|----------|
@@ -408,74 +390,39 @@ Files are stored according to `RealFilenamePolicy` in config:
 | `_` | Replace path separators with underscores |
 | `uuid` | Store with UUID filename (default) |
 
-### Upload Root
+### Default Directories
 
-Files are stored under the `SimpleUploadRoot` path (default: `/aaa`) within the VFS.
+On startup, three default directories are created under `SimpleUploadRoot`:
+- `img` — Image files
+- `video` — Video files
+- `other` — Other files
+
+### File Validation
+
+| Input | Result | Valid |
+|-------|--------|-------|
+| `file.txt` | `file.txt` | Yes |
+| `dir/file.txt` | `dir/file.txt` | Yes |
+| `./file.txt` | Error | No |
+| `../file.txt` | Error | No |
+| `dir\file.txt` | `dir/file.txt` | Yes (converted) |
 
 ---
 
-## Static Files
+## Web Frontend
 
-The backend serves frontend static files at:
-```
-GET /static/*
-```
+The frontend SPA is served at `/`. It includes:
+- **所有文件** — Root directory browser, table view with file management
+- **图片文件** — Image gallery (grid + preview modal)
+- **视频文件** — Video browser (grid + player modal)
+- **普通文件** — File table (sorted view of `/other/` directory)
+- **用户管理** — Admin user CRUD (admin only)
+- **扫描文件** — Filesystem sync button (admin only)
 
-Files are served from the `Http.StaticRoot` directory (default: `./static`).
+Static files are served from `Http.StaticRoot` (default: `./static`).
 
 ---
 
 ## CORS
 
-The API enables CORS with:
-- Allowed origins: `*` (all)
-- Allowed methods: `*` (all)
-
----
-
-## Error Handling
-
-Errors return HTTP status codes with JSON body:
-
-```json
-{
-  "TraceID": "abc123",
-  "Code": "invalid_arguments",
-  "Message": "filename is invalid",
-  "Data": null
-}
-```
-
-| HTTP Status | Error Code | Description |
-|-------------|------------|-------------|
-| 400 | `invalid_arguments` | Bad request parameters |
-| 404 | `not_found` | Resource not found |
-| 409 | `file_exists` | File already exists |
-| 503 | (various) | Server error |
-
----
-
-## Testing with curl
-
-### Quick Test Script
-
-```bash
-# Set base URL
-BASE_URL="http://localhost:8088"
-
-# Upload a file
-curl -X POST "$BASE_URL/simple_upload/object/test.txt" \
-  -F "File=@./test.txt"
-
-# List files
-curl "$BASE_URL/simple_upload/objects/"
-
-# Download file
-curl "$BASE_URL/simple_upload/object/test.txt" -o downloaded.txt
-
-# Get metadata
-curl -I "$BASE_URL/simple_upload/object/test.txt"
-
-# Delete file
-curl -X DELETE "$BASE_URL/simple_upload/object/test.txt"
-```
+The API enables CORS with all origins and methods allowed.

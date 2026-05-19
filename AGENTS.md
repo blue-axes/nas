@@ -38,10 +38,13 @@
 
 ## Features
 - **Dark tech theme** — CSS variables in `tech-theme.css` (custom scrollbar, glow effects, glassmorphism)
-- **Mobile responsive** — 768px/480px breakpoints, hamburger menu overlay, adaptive grids
+- **Mobile responsive** — 768px/480px breakpoints, hamburger menu overlay, adaptive grids, compact button mode
 - **Tags + Search** — backend `GET /simple_upload/search?Keyword=&Tag=` + store `SearchFiles`
 - **Folder support** — `POST /simple_upload/mkdir/*` creates dir entries, delete cascades
-- **WebDAV** — Go native network mount at `/webdav/`, serves `SimpleUploadRoot`
+- **WebDAV** — Go native network mount at `/webdav/`, serves `SimpleUploadRoot`, permission enforced at filesystem level
+- **mDNS** — hashicorp/mdns broadcasts `nas.local` on LAN, supports IPv4+IPv6, multi-interface
+- **File scanning** — `POST /api/scanfs` syncs filesystem → DB, admin-only
+- **Default directories** — `img`, `video`, `other` auto-created on startup
 
 ## API endpoints
 | Method | Path | Description |
@@ -49,13 +52,23 @@
 | HEAD | `/simple_upload/object/*` | File metadata |
 | GET | `/simple_upload/object/*` | Download/display file |
 | POST | `/simple_upload/object/*` | Upload file |
-| DELETE | `/simple_upload/object/*` | Delete file/directory |
+| DELETE | `/simple_upload/object/*` | Delete file/directory (directory cascades) |
 | PATCH | `/simple_upload/object/*` | Update file tags (`{"Tags":["a","b"]}`) |
+| GET | `/simple_upload/objects` | List root directory |
 | GET | `/simple_upload/objects/*` | List directory contents (includes Tags) |
 | POST | `/simple_upload/objects/` | Multi-file upload |
 | GET | `/simple_upload/search` | Search (query: Keyword, Tag) |
 | POST | `/simple_upload/mkdir/*` | Create directory |
 | GET | `/simple_upload/preview/*` | Preview file (PDF/Office conversion) |
+| POST | `/api/users/login` | Login (sets session cookie) |
+| POST | `/api/users/logout` | Logout |
+| GET | `/api/users/me` | Get current user info |
+| GET | `/api/users` | List users (admin) |
+| POST | `/api/users` | Create user (admin) |
+| PUT | `/api/users/:username` | Update user permissions (admin) |
+| DELETE | `/api/users/:username` | Delete user (admin) |
+| PUT | `/api/users/:username/password` | Change password |
+| POST | `/api/scanfs` | Scan filesystem → sync DB records (admin) |
 
 ## Config files
 - Backend config: `config.json` or `config.yaml` (same schema). Example in `backend/rootfs/etc/`.

@@ -1,141 +1,73 @@
 # Data Models
 
-## Request/Response Structures
+## File Model
 
-### Standard Response Wrapper
-
-All API responses are wrapped in this structure:
-
-```go
-type respStruct struct {
-    TraceID string      `json:"TraceID"`  // Unique request identifier
-    Code    string      `json:"Code"`     // Status code (e.g., "success")
-    Message string      `json:"Message"`  // Human-readable message
-    Data    interface{} `json:"Data"`     // Response payload
-}
-```
-
-**Example:**
-```json
-{
-  "TraceID": "550e8400-e29b-41d4-a716-446655440000",
-  "Code": "success",
-  "Message": "",
-  "Data": {}
-}
-```
-
----
-
-## File Models
-
-### File
-
-Internal representation of a file in the database:
+Internal representation of a file/directory in the database:
 
 ```go
 type File struct {
-    ID   uint   `json:"ID"`   // Auto-increment ID
-    Name string `json:"Name"` // Original filename with path
-    Ext  string `json:"Ext"`  // File extension
-    Path string `json:"Path"` // Physical storage path
-    Size uint64 `json:"Size"` // File size in bytes
-    Md5  string `json:"Md5"`  // MD5 checksum
+    ID    uint     `json:"ID"`
+    Name  string   `json:"Name"`   // Virtual path (e.g., "img/photo.jpg")
+    Ext   string   `json:"Ext"`    // File extension
+    Path  string   `json:"Path"`   // Real filesystem path (e.g., "/aaa/img/uuid.jpg")
+    Size  uint64   `json:"Size"`   // File size in bytes
+    Md5   string   `json:"Md5"`    // MD5 checksum
+    IsDir bool     `json:"IsDir"`  // Whether this is a directory
+    Tags  []string `json:"Tags"`   // User-defined tags
 }
 ```
 
-**Example:**
-```json
-{
-  "ID": 1,
-  "Name": "documents/report.pdf",
-  "Ext": ".pdf",
-  "Path": "/aaa/documents/a1b2c3d4.pdf",
-  "Size": 102400,
-  "Md5": "d41d8cd98f00b204e9800998ecf8427e"
-}
-```
+### FileInfo (API Response)
 
----
-
-### FileInfo
-
-Directory listing item (used in ReadDir response):
+Directory listing item:
 
 ```go
 type FileInfo struct {
-    Name     string `json:"Name"`     // File or directory name
-    Size     uint64 `json:"Size"`     // File size (0 for directories)
-    FileType string `json:"FileType"` // "file" or "dir"
-}
-```
-
-**Examples:**
-
-File entry:
-```json
-{
-  "Name": "document.txt",
-  "Size": 1024,
-  "FileType": "file"
-}
-```
-
-Directory entry:
-```json
-{
-  "Name": "subfolder",
-  "Size": 0,
-  "FileType": "dir"
-}
-```
-
----
-
-### Filename
-
-Path parameter structure for file operations:
-
-```go
-type Filename struct {
-    Name string `param:"*"` // Captures the entire path after /object/
-}
-```
-
----
-
-## Example Models
-
-### Example
-
-Simple example record for database testing:
-
-```go
-type Example struct {
-    ID   string `json:"ID"`   // UUID identifier
-    Name string `json:"Name"` // Example name
+    Name     string   `json:"Name"`
+    Size     uint64   `json:"Size"`
+    FileType string   `json:"FileType"` // "file" or "dir"
+    Tags     []string `json:"Tags,omitempty"`
 }
 ```
 
 **Example:**
 ```json
 {
-  "ID": "550e8400-e29b-41d4-a716-446655440000",
-  "Name": "My Example"
+  "Name": "photo.jpg",
+  "Size": 102400,
+  "FileType": "file",
+  "Tags": ["vacation", "family"]
+}
+```
+
+---
+
+## User Model
+
+```go
+type UserInfo struct {
+    Username string `json:"Username"`
+    CanRead  bool   `json:"CanRead"`
+    CanWrite bool   `json:"CanWrite"`
+    IsAdmin  bool   `json:"IsAdmin"`
+}
+```
+
+---
+
+## Scan Result
+
+```go
+type ScanResult struct {
+    Total   int `json:"Total"`
+    New     int `json:"New"`
+    Skipped int `json:"Skipped"`
 }
 ```
 
 ---
 
 ## Error Codes
-
-### ErrorCode Type
-
-```go
-type ErrorCode = string
-```
-
-### Defined Error Codes
 
 | Code | Constant | HTTP Status | Description |
 |------|----------|-------------|-------------|
@@ -144,15 +76,13 @@ type ErrorCode = string
 | `invalid_arguments` | `ErrCodeInvalidArgs` | 400 | Invalid request parameters |
 | `not_found` | `ErrCodeNotFound` | 404 | Resource not found |
 | `file_exists` | `ErrCodeFileExists` | 409 | File already exists |
-| `file_checksum_invalid` | `ErrFileCheckSumInvalid` | 503 | File checksum verification failed |
+| `file_checksum_invalid` | `ErrFileCheckSumInvalid` | 503 | Checksum verification failed |
 
 ---
 
 ## Configuration Models
 
-### Config (JSON/YAML)
-
-Root configuration structure:
+### Config
 
 ```go
 type Config struct {
@@ -160,6 +90,7 @@ type Config struct {
     Log      LogConfig      `json:"Log" yaml:"Log"`
     Database DatabaseConfig `json:"Database" yaml:"Database"`
     Nas      NasConfig      `json:"Nas" yaml:"Nas"`
+    MDNS     MDNSConfig     `json:"MDNS" yaml:"MDNS"`
 }
 ```
 
@@ -167,17 +98,33 @@ type Config struct {
 
 ```go
 type HttpConfig struct {
-    ListenAddress string `json:"ListenAddress" yaml:"ListenAddress"` // e.g., "0.0.0.0"
-    ListenPort    uint16 `json:"ListenPort" yaml:"ListenPort"`       // e.g., 8088
-    StaticRoot    string `json:"StaticRoot" yaml:"StaticRoot"`       // e.g., "./static"
+    ListenAddress string     `json:"ListenAddress" yaml:"ListenAddress"`
+    ListenPort    uint16     `json:"ListenPort" yaml:"ListenPort"`
+    StaticRoot    string     `json:"StaticRoot" yaml:"StaticRoot"`
+    CertFile      string     `json:"CertFile" yaml:"CertFile"`
+    KeyFile       string     `json:"KeyFile" yaml:"KeyFile"`
+    Auth          AuthConfig `json:"Auth" yaml:"Auth"`
 }
 ```
 
-### LogConfig
+### AuthConfig
 
 ```go
-type LogConfig struct {
-    Level string `json:"Level" yaml:"Level"` // "debug", "info", "warn", "error"
+type AuthConfig struct {
+    Enabled            bool   `json:"Enabled" yaml:"Enabled"`
+    CookieName         string `json:"CookieName" yaml:"CookieName"`           // default: "nas_session"
+    SessionExpireHours int    `json:"SessionExpireHours" yaml:"SessionExpireHours"` // default: 24
+}
+```
+
+### MDNSConfig
+
+```go
+type MDNSConfig struct {
+    Enabled     bool   `json:"Enabled" yaml:"Enabled"`
+    ServiceName string `json:"ServiceName" yaml:"ServiceName"` // default: "_http._tcp"
+    Hostname    string `json:"Hostname" yaml:"Hostname"`       // default: "nas.local"
+    Info        string `json:"Info" yaml:"Info"`               // default: "NAS Web Service"
 }
 ```
 
@@ -192,219 +139,67 @@ type DatabaseConfig struct {
 
 ### RdbConfig
 
-```go
-type RdbConfig struct {
-    DriverType            RdbDriverType `json:"DriverType" yaml:"DriverType"`     // "sqlite" or "postgres"
-    Debug                 bool          `json:"Debug" yaml:"Debug"`               // Enable SQL logging
-    DSN                   string        `json:"DSN" yaml:"DSN"`                   // Connection string
-    MaxIdleConnCount      int           `json:"MaxIdleConnCount" yaml:"MaxIdleConnCount"`
-    MaxConnCount          int           `json:"MaxConnCount" yaml:"MaxConnCount"`
-    ConnMaxIdleTimeSecond int           `json:"ConnMaxIdleTimeSecond" yaml:"ConnMaxIdleTimeSecond"`
-    AutoMigrateLevel      string        `json:"AutoMigrateLevel" yaml:"AutoMigrateLevel"` // "auto" or "must"
-}
-```
-
-### MongoConfig
-
-```go
-type MongoConfig struct {
-    Debug                 bool   `json:"Debug" yaml:"Debug"`
-    Address               string `json:"Address" yaml:"Address"`
-    Port                  uint16 `json:"Port" yaml:"Port"`
-    Username              string `json:"Username" yaml:"Username"`
-    Password              string `json:"Password" yaml:"Password"`
-    Database              string `json:"Database" yaml:"Database"`
-    MaxIdleConnCount      int    `json:"MaxIdleConnCount" yaml:"MaxIdleConnCount"`
-    MaxConnCount          int    `json:"MaxConnCount" yaml:"MaxConnCount"`
-    ConnMaxIdleTimeSecond int    `json:"ConnMaxIdleTimeSecond" yaml:"ConnMaxIdleTimeSecond"`
-    AutoMigrateLevel      string `json:"AutoMigrateLevel" yaml:"AutoMigrateLevel"`
-}
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `DriverType` | string | `"sqlite"` | `"sqlite"` or `"postgres"` |
+| `Debug` | bool | false | Enable SQL logging |
+| `DSN` | string | `"nas.db?mode=rwc"` | Connection string |
+| `MaxConnCount` | int | 5 | Max open connections |
+| `MaxIdleConnCount` | int | 2 | Max idle connections |
+| `ConnMaxIdleTimeSecond` | int | 300 | Idle timeout |
+| `AutoMigrateLevel` | string | - | `"auto"` or `"must"` |
 
 ### NasConfig
 
-```go
-type NasConfig struct {
-    SimpleUploadRoot   string             `json:"SimpleUploadRoot" yaml:"SimpleUploadRoot"`     // e.g., "/aaa"
-    RealFilenamePolicy RealFilenamePolicy `json:"RealFilenamePolicy" yaml:"RealFilenamePolicy"` // "origin", "_", or "uuid"
-}
-```
-
-### RdbDriverType
-
-```go
-type RdbDriverType string
-
-const (
-    DriverTypeSqlite   RdbDriverType = "sqlite"
-    DriverTypePostgres RdbDriverType = "postgres"
-)
-```
-
-### RealFilenamePolicy
-
-```go
-type RealFilenamePolicy string
-
-const (
-    RFNP_Origin    RealFilenamePolicy = "origin"    // Keep original filename
-    RFNP_Underline RealFilenamePolicy = "_"         // Replace / with _
-    RFNP_UUID      RealFilenamePolicy = "uuid"      // Use UUID as filename
-)
-```
-
----
-
-## API Schema Definitions
-
-### Request Schemas
-
-**Create Example Request:**
-```json
-{
-  "Name": "required string"
-}
-```
-
-**Multi Upload Form:**
-```
-Dir: string (required)
-Overwrite: "true" or "false" (optional)
-File: binary file(s) (required)
-```
-
-**Single Upload Form:**
-```
-File: binary file (required)
-Overwrite: boolean (optional)
-```
-
----
-
-### Response Schemas
-
-**Success Response (no data):**
-```json
-{
-  "TraceID": "string",
-  "Code": "success",
-  "Message": "",
-  "Data": null
-}
-```
-
-**Create Example Response:**
-```json
-{
-  "TraceID": "string",
-  "Code": "success",
-  "Message": "",
-  "Data": {
-    "ID": "uuid"
-  }
-}
-```
-
-**List Examples Response:**
-```json
-{
-  "TraceID": "string",
-  "Code": "success",
-  "Message": "",
-  "Data": [
-    {
-      "ID": "uuid",
-      "Name": "string"
-    }
-  ]
-}
-```
-
-**Directory Listing Response:**
-```json
-{
-  "TraceID": "string",
-  "Code": "success",
-  "Message": "",
-  "Data": {
-    "List": [
-      {
-        "Name": "string",
-        "Size": 0,
-        "FileType": "file|dir"
-      }
-    ]
-  }
-}
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `SimpleUploadRoot` | string | - | Root directory for uploaded files |  
+| `RealFilenamePolicy` | string | `"uuid"` | `"origin"`, `"_"`, or `"uuid"` |
 
 ---
 
 ## Database Tables
 
-### files
-
-Table for storing file metadata (SQL):
+### file_object
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Auto-increment ID |
-| name | TEXT | NOT NULL, UNIQUE | Original file path |
-| ext | TEXT | | File extension |
-| path | TEXT | NOT NULL | Physical storage path |
-| size | INTEGER | | File size in bytes |
-| md5 | TEXT | | MD5 checksum |
+| id | INTEGER | PRIMARY KEY | Auto-increment |
+| name | TEXT | UNIQUE, NOT NULL | Virtual file path |
+| ext | VARCHAR(50) | | File extension |
+| path | VARCHAR(1024) | | Real filesystem path |
+| size | INTEGER | DEFAULT 0 | File size |
+| md5_sum | TEXT | | MD5 checksum |
+| is_dir | BOOLEAN | DEFAULT false | Directory flag |
+| tags | TEXT | | JSON array of tags |
+| created_at | DATETIME | | Auto timestamp |
+| updated_at | DATETIME | | Auto timestamp |
 
-### examples
-
-Table for example data (SQL):
+### users
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| id | TEXT | PRIMARY KEY | UUID |
-| name | TEXT | | Example name |
+| id | INTEGER | PRIMARY KEY | Auto-increment |
+| username | VARCHAR(128) | UNIQUE, NOT NULL | Login name |
+| password_hash | VARCHAR(256) | NOT NULL | bcrypt hash |
+| can_read | BOOLEAN | DEFAULT true | Read permission |
+| can_write | BOOLEAN | DEFAULT false | Write permission |
+| is_admin | BOOLEAN | DEFAULT false | Admin flag |
 
 ---
 
-## VFS Models
+## Default Values
 
-### MountFs
-
-Virtual filesystem with mount points:
-
-```go
-type MountFs interface {
-    Stat(name string) (fs.FileInfo, error)
-    Remove(name string) error
-    RemoveAll(path string) error
-    OpenFile(name string, flag int, perm fs.FileMode) (File, error)
-    Mkdir(dir string, perm fs.FileMode) error
-    MkdirAll(path string, perm fs.FileMode) error
-    ReadDir(dir string) ([]fs.DirEntry, error)
-    TempDir() string
-    Mount(dir string, fs VFS) error
-    Umount(dir string) error
-}
-```
-
-### OsFs
-
-OS filesystem implementation:
-
-```go
-type OsFsConf struct {
-    RootDir string  // Root directory for the filesystem
-}
-```
-
----
-
-## Request Flow
-
-1. Request arrives at Echo server
-2. Middleware adds context with TraceID
-3. Handler validates and binds parameters
-4. Service layer processes business logic
-5. Store layer interacts with database
-6. VFS layer handles file operations
-7. Response is wrapped and returned
+| Config Field | Default |
+|-------------|---------|
+| `Http.ListenAddress` | `"0.0.0.0"` |
+| `Http.ListenPort` | 80 |
+| `Http.StaticRoot` | `"./"` |
+| `Http.Auth.CookieName` | `"nas_session"` |
+| `Http.Auth.SessionExpireHours` | 24 |
+| `Log.Level` | `"info"` |
+| `Database.Rdb.DriverType` | `"sqlite"` |
+| `Nas.RealFilenamePolicy` | `"uuid"` |
+| `MDNS.ServiceName` | `"_http._tcp"` |
+| `MDNS.Hostname` | `"nas.local"` |
+| `MDNS.Info` | `"NAS Web Service"` |

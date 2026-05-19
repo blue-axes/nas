@@ -1,64 +1,206 @@
 openapi: 3.0.3
 info:
   title: NAS API
-  description: Network Attached Storage API for file management
-  version: 1.0.0
-  contact:
-    name: API Support
+  description: Network Attached Storage API with file management, user management, WebDAV, and mDNS
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8088
     description: Local development server
 
 paths:
+  # ========== Auth ==========
+  /api/users/login:
+    post:
+      summary: Login
+      operationId: login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [Username, Password]
+              properties:
+                Username: { type: string }
+                Password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+
+  /api/users/logout:
+    post:
+      summary: Logout
+      operationId: logout
+      tags: [Auth]
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /api/users/me:
+    get:
+      summary: Get current user
+      operationId: getCurrentUser
+      tags: [Auth]
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+
+  # ========== User Management (admin) ==========
+  /api/users:
+    get:
+      summary: List users
+      operationId: listUsers
+      tags: [Users]
+      security: [{ sessionAuth: [] }]
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+    post:
+      summary: Create user
+      operationId: createUser
+      tags: [Users]
+      security: [{ sessionAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [Username, Password]
+              properties:
+                Username: { type: string }
+                Password: { type: string }
+                CanRead: { type: boolean }
+                CanWrite: { type: boolean }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /api/users/{username}:
+    put:
+      summary: Update user permissions
+      operationId: updateUser
+      tags: [Users]
+      security: [{ sessionAuth: [] }]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                CanRead: { type: boolean }
+                CanWrite: { type: boolean }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+    delete:
+      summary: Delete user
+      operationId: deleteUser
+      tags: [Users]
+      security: [{ sessionAuth: [] }]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /api/users/{username}/password:
+    put:
+      summary: Change password
+      operationId: changePassword
+      tags: [Users]
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [CurrentPassword, NewPassword]
+              properties:
+                CurrentPassword: { type: string }
+                NewPassword: { type: string }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /api/scanfs:
+    post:
+      summary: Scan filesystem and sync DB
+      operationId: scanFiles
+      tags: [Admin]
+      security: [{ sessionAuth: [] }]
+      responses:
+        '200':
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResultResponse'
+
+  # ========== File Operations ==========
   /simple_upload/object/{filename}:
     head:
       summary: Get file metadata
       operationId: getFileMetadata
-      tags:
-        - Files
+      tags: [Files]
       parameters:
         - name: filename
           in: path
           required: true
-          schema:
-            type: string
-          description: Path to the file
+          schema: { type: string }
       responses:
         '200':
           description: File metadata in headers
           headers:
             Content-Length:
-              schema:
-                type: integer
-              description: File size in bytes
+              schema: { type: integer }
             Content-Disposition:
-              schema:
-                type: string
-              description: Attachment filename
+              schema: { type: string }
             Content-Type:
-              schema:
-                type: string
-              description: MIME type
+              schema: { type: string }
 
     get:
       summary: Download file
       operationId: downloadFile
-      tags:
-        - Files
+      tags: [Files]
       parameters:
         - name: filename
           in: path
           required: true
-          schema:
-            type: string
-          description: Path to the file
+          schema: { type: string }
         - name: Download
           in: query
           schema:
             type: boolean
             default: false
-          description: Force download as attachment
       responses:
         '200':
           description: File content
@@ -71,15 +213,12 @@ paths:
     post:
       summary: Upload file
       operationId: uploadFile
-      tags:
-        - Files
+      tags: [Files]
       parameters:
         - name: filename
           in: path
           required: true
-          schema:
-            type: string
-          description: Target path and name for the file
+          schema: { type: string }
       requestBody:
         content:
           multipart/form-data:
@@ -89,75 +228,82 @@ paths:
                 File:
                   type: string
                   format: binary
-                  description: File to upload
                 Overwrite:
                   type: boolean
-                  description: Overwrite existing file
           application/octet-stream:
             schema:
               type: string
               format: binary
-              description: Raw file content
       responses:
         '200':
-          description: Upload successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+          $ref: '#/components/responses/Success'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Error'
         '409':
-          description: File exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Error'
 
     delete:
-      summary: Delete file
+      summary: Delete file or directory
       operationId: deleteFile
-      tags:
-        - Files
+      tags: [Files]
       parameters:
         - name: filename
           in: path
           required: true
-          schema:
-            type: string
-          description: Path to the file
+          schema: { type: string }
       responses:
         '200':
-          description: Delete successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+          $ref: '#/components/responses/Success'
         '404':
-          description: File not found
+          $ref: '#/components/responses/Error'
+
+    patch:
+      summary: Update file tags
+      operationId: updateFileTags
+      tags: [Files]
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [Tags]
+              properties:
+                Tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+
+  /simple_upload/objects:
+    get:
+      summary: List root directory
+      operationId: listRootDirectory
+      tags: [Files]
+      responses:
+        '200':
+          description: Root directory listing
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/DirectoryResponse'
 
   /simple_upload/objects/{path}:
     get:
       summary: List directory contents
       operationId: listDirectory
-      tags:
-        - Files
+      tags: [Files]
       parameters:
         - name: path
           in: path
           required: true
-          schema:
-            type: string
-            default: ""
-          description: Directory path to list
+          schema: { type: string }
       responses:
         '200':
           description: Directory listing
@@ -170,8 +316,7 @@ paths:
     post:
       summary: Multi-file upload
       operationId: multiUpload
-      tags:
-        - Files
+      tags: [Files]
       requestBody:
         content:
           multipart/form-data:
@@ -180,150 +325,159 @@ paths:
               properties:
                 Dir:
                   type: string
-                  description: Target directory path
                 Overwrite:
                   type: string
-                  description: "Set to 'true' to overwrite"
                 File:
                   type: array
                   items:
                     type: string
                     format: binary
-                  description: Files to upload
       responses:
         '200':
-          description: Upload successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+          $ref: '#/components/responses/Success'
 
-  /example/list:
+  /simple_upload/mkdir/{path}:
     post:
-      summary: List examples (SQL)
-      operationId: listExamplesSQL
-      tags:
-        - Examples
+      summary: Create directory
+      operationId: mkdir
+      tags: [Files]
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
       responses:
         '200':
-          description: List of examples
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExampleListResponse'
+          $ref: '#/components/responses/Success'
 
-  /example/create:
-    post:
-      summary: Create example (SQL)
-      operationId: createExampleSQL
-      tags:
-        - Examples
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - Name
-              properties:
-                Name:
-                  type: string
-                  description: Example name
+  /simple_upload/search:
+    get:
+      summary: Search files
+      operationId: searchFiles
+      tags: [Files]
+      parameters:
+        - name: Keyword
+          in: query
+          schema: { type: string }
+        - name: Tag
+          in: query
+          schema: { type: string }
       responses:
         '200':
-          description: Created example ID
+          description: Search results
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExampleCreateResponse'
+                $ref: '#/components/schemas/DirectoryResponse'
 
-  /example/mongo_list:
-    post:
-      summary: List examples (MongoDB)
-      operationId: listExamplesMongo
-      tags:
-        - Examples
+  /simple_upload/preview/{path}:
+    get:
+      summary: Preview document
+      description: Convert Office/PDF to HTML preview (requires libreoffice)
+      operationId: previewFile
+      tags: [Files]
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
       responses:
         '200':
-          description: List of examples
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExampleListResponse'
-
-  /example/mongo_create:
-    post:
-      summary: Create example (MongoDB)
-      operationId: createExampleMongo
-      tags:
-        - Examples
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - Name
-              properties:
-                Name:
-                  type: string
-                  description: Example name
-      responses:
-        '200':
-          description: Created example ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExampleCreateResponse'
+          description: HTML preview content or converted PDF
 
 components:
+  responses:
+    Success:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     SuccessResponse:
       type: object
       properties:
-        TraceID:
-          type: string
-          description: Request trace ID
-        Code:
-          type: string
-          example: "success"
-        Message:
-          type: string
-          example: ""
-        Data:
-          type: object
-          nullable: true
+        TraceID: { type: string }
+        Code: { type: string, example: "success" }
+        Message: { type: string }
+        Data: { nullable: true }
 
     ErrorResponse:
       type: object
       properties:
-        TraceID:
-          type: string
+        TraceID: { type: string }
         Code:
           type: string
-          enum:
-            - unknown
-            - invalid_arguments
-            - not_found
-            - file_exists
-            - file_checksum_invalid
-        Message:
-          type: string
+          enum: [unknown, invalid_arguments, not_found, file_exists, "403"]
+        Message: { type: string }
+        Data: { nullable: true }
+
+    UserInfo:
+      type: object
+      properties:
+        Username: { type: string }
+        CanRead: { type: boolean }
+        CanWrite: { type: boolean }
+        IsAdmin: { type: boolean }
+
+    UserInfoResponse:
+      type: object
+      properties:
+        TraceID: { type: string }
+        Code: { type: string }
+        Message: { type: string }
+        Data:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserListResponse:
+      type: object
+      properties:
+        TraceID: { type: string }
+        Code: { type: string }
+        Message: { type: string }
+        Data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserInfo'
+
+    ScanResultResponse:
+      type: object
+      properties:
+        TraceID: { type: string }
+        Code: { type: string }
+        Message: { type: string }
         Data:
           type: object
-          nullable: true
+          properties:
+            Total: { type: integer }
+            New: { type: integer }
+            Skipped: { type: integer }
+
+    FileInfo:
+      type: object
+      properties:
+        Name: { type: string }
+        Size: { type: integer, format: int64 }
+        FileType:
+          type: string
+          enum: [file, dir]
+        Tags:
+          type: array
+          items: { type: string }
 
     DirectoryResponse:
       type: object
       properties:
-        TraceID:
-          type: string
-        Code:
-          type: string
-        Message:
-          type: string
+        TraceID: { type: string }
+        Code: { type: string }
+        Message: { type: string }
         Data:
           type: object
           properties:
@@ -332,61 +486,13 @@ components:
               items:
                 $ref: '#/components/schemas/FileInfo'
 
-    FileInfo:
-      type: object
-      properties:
-        Name:
-          type: string
-        Size:
-          type: integer
-          format: int64
-        FileType:
-          type: string
-          enum:
-            - file
-            - dir
-
-    Example:
-      type: object
-      properties:
-        ID:
-          type: string
-        Name:
-          type: string
-
-    ExampleListResponse:
-      type: object
-      properties:
-        TraceID:
-          type: string
-        Code:
-          type: string
-        Message:
-          type: string
-        Data:
-          type: array
-          items:
-            $ref: '#/components/schemas/Example'
-
-    ExampleCreateResponse:
-      type: object
-      properties:
-        TraceID:
-          type: string
-        Code:
-          type: string
-        Message:
-          type: string
-        Data:
-          type: object
-          properties:
-            ID:
-              type: string
-
   securitySchemes:
-    bearerAuth:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: nas_session
+    basicAuth:
       type: http
-      scheme: bearer
-      bearerFormat: JWT
+      scheme: basic
 
 security: []

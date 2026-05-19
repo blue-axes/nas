@@ -2,14 +2,14 @@
 
 ## Overview
 
-This documentation covers the Network Attached Storage (NAS) API endpoints, data models, and testing examples.
+This documentation covers the Network Attached Storage (NAS) API endpoints, data models, configuration, and testing examples.
 
 ## Quick Links
 
-- [API Reference](README.md) - Complete API documentation with all endpoints
-- [OpenAPI Specification](openapi.yaml) - Machine-readable API specification (YAML)
-- [Examples](examples.md) - Testing examples with curl, PowerShell, and Python
-- [Data Models](models.md) - Data structures and configuration schemas
+- [API Reference](README.md) — Complete API documentation with all endpoints
+- [OpenAPI Specification](openapi.yaml) — Machine-readable OpenAPI 3.0 spec
+- [Examples](examples.md) — curl, Python, and WebDAV examples
+- [Data Models](models.md) — Data structures and configuration schemas
 
 ## Base URL
 
@@ -17,20 +17,44 @@ This documentation covers the Network Attached Storage (NAS) API endpoints, data
 http://localhost:8088
 ```
 
+LAN devices can also use mDNS: `http://nas.local:8088`
+
 ## Main Features
 
 ### File Management (`/simple_upload`)
+- Upload (single, multi, binary stream)
+- Download with optional attachment mode
+- File metadata via HEAD
+- Delete files and directories (cascade)
+- Update file tags (PATCH)
+- List directories with tag info
+- Create directories
+- Search by keyword and tag
+- Document preview (Office/PDF → HTML)
 
-- **Upload files** - Single and multi-file upload with overwrite control
-- **Download files** - Stream or force download as attachment
-- **File metadata** - HEAD requests for file information
-- **Delete files** - Remove files from storage
-- **List directories** - Browse folder contents
+### Authentication & Users (`/api/users`)
+- Session-based login/logout
+- User CRUD (admin only)
+- Permission management (CanRead / CanWrite / IsAdmin)
+- Change password
 
-### Database Examples (`/example`)
+### Admin Tools
+- Filesystem scan to sync DB (`POST /api/scanfs`)
 
-- **SQL examples** - CRUD operations for relational database
-- **MongoDB examples** - CRUD operations for document database
+### WebDAV (`/webdav/`)
+- Full WebDAV mount point
+- Supports Windows Explorer, macOS Finder, davfs2
+- Basic Auth with permission checks
+
+### mDNS
+- Automatic local network service discovery
+- Broadcasts as `nas.local` via `_http._tcp`
+
+### Frontend (SPA)
+- File browser with grid and table views
+- Image/video galleries with preview/player
+- Tag management
+- Responsive mobile support
 
 ## API Structure
 
@@ -39,8 +63,8 @@ All responses follow a standard format:
 ```json
 {
   "TraceID": "unique-request-id",
-  "Code": "success|error_code",
-  "Message": "Human readable message",
+  "Code": "success",
+  "Message": "",
   "Data": {}
 }
 ```
@@ -54,29 +78,30 @@ cd backend
 go run main.go -config ./rootfs/etc/config.json
 ```
 
-### 2. Test File Upload
+### 2. Login & Test
 
 ```bash
-# Create a test file
-echo "Hello, NAS!" > test.txt
+# Login
+curl -c cookies.txt -X POST http://localhost:8088/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"Username":"admin","Password":"admin"}'
 
-# Upload the file
-curl -X POST "http://localhost:8088/simple_upload/object/test.txt" \
+# List root directory
+curl -b cookies.txt http://localhost:8088/simple_upload/objects/
+
+# Upload a file
+curl -b cookies.txt -X POST http://localhost:8088/simple_upload/object/test.txt \
   -F "File=@test.txt"
-
-# List files
-curl "http://localhost:8088/simple_upload/objects/"
 ```
 
 ## Configuration
-
-The server reads configuration from `config.json` or `config.yaml`:
 
 ```json
 {
   "Http": {
     "ListenPort": 8088,
-    "StaticRoot": "./static"
+    "StaticRoot": "./static",
+    "Auth": { "Enabled": true }
   },
   "Database": {
     "Rdb": {
@@ -88,28 +113,31 @@ The server reads configuration from `config.json` or `config.yaml`:
   "Nas": {
     "SimpleUploadRoot": "/aaa",
     "RealFilenamePolicy": "uuid"
+  },
+  "MDNS": {
+    "Enabled": true,
+    "ServiceName": "_http._tcp",
+    "Hostname": "nas.local",
+    "Info": "NAS Web Service"
   }
 }
 ```
 
 ## Security Features
 
-- **Path traversal protection** - Blocks `../` and `./` patterns
-- **Filename validation** - Normalizes paths and prevents directory escapes
-- **CORS enabled** - Allows cross-origin requests from any domain
+- Session-based authentication with bcrypt passwords
+- Permission levels: CanRead, CanWrite, IsAdmin
+- Path traversal protection (blocks `../` and `./`)
+- Filename validation and normalization
+- WebDAV filesystem-level permission enforcement
+- Admin-only API endpoints protected by middleware
 
-## Error Handling
-
-Common error codes:
+## Error Codes
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | `success` | 200 | Request successful |
-| `invalid_arguments` | 400 | Bad request parameters |
+| `invalid_arguments` | 400 | Bad parameters |
 | `not_found` | 404 | Resource not found |
 | `file_exists` | 409 | File already exists |
-
-## Additional Resources
-
-- [Backend README](../backend/README.md) - Backend setup and architecture
-- [Frontend README](../frontend/README.md) - Frontend development guide
+| `403` | 403 | Permission denied |

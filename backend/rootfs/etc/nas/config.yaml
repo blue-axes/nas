@@ -1,0 +1,36 @@
+Log:
+    Level: "info"
+Http:
+    ListenAddress: "0.0.0.0"
+    ListenPort: 8088
+    CertFile: "/etc/nas/server.crt"
+    KeyFile: "/etc/nas/server.key"
+    StaticRoot: "/usr/local/nas/pages"
+    Auth:
+        Enabled: true
+        SessionExpireHours: 24
+
+Database:
+    Rdb:
+        Debug: false
+        DSN: "/data/nas.db?mode=rwc"
+        AutoMigrateLevel: "auto"
+        MaxConnCount: 10
+#  Mongo:
+#    Debug: true
+#    Address: "192.168.0.231"
+#    Port: 27017
+#    Username: "root"
+#    Password: "123456"
+#    Database: "admin"
+#    AutoMigrateLevel: "auto"
+#    MaxConnCount: 10
+Nas:
+    SimpleUploadRoot: "/data/data"
+    RealFilenamePolicy: "origin"
+
+MDNS:
+    Enabled: true
+    ServiceName: "_http._tcp"
+    Hostname: "nas.local"
+    Info: "NAS Web Service"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Simple NAS Service
+Documentation=https://nas.local:8088
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/nas/bin/nas -config /etc/nas/config.yaml
+WorkingDirectory=/usr/local/nas
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
